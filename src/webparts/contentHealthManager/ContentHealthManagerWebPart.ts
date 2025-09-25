@@ -11,31 +11,45 @@ import { IReadonlyTheme } from '@microsoft/sp-component-base';
 import * as strings from 'ContentHealthManagerWebPartStrings';
 import ContentHealthManager from './components/ContentHealthManager';
 import { IContentHealthManagerProps } from './components/IContentHealthManagerProps';
+import { FluentProvider, FluentProviderProps, teamsLightTheme } from '@fluentui/react-components';
 
 export interface IContentHealthManagerWebPartProps {
   description: string;
 }
 
-export default class ContentHealthManagerWebPart extends BaseClientSideWebPart<IContentHealthManagerWebPartProps> {
+export enum AppMode {
+  SharePoint, SharePointLocal, Teams, TeamsLocal, Office, OfficeLocal, Outlook, OutlookLocal
+}
 
+export default class ContentHealthManagerWebPart extends BaseClientSideWebPart<IContentHealthManagerWebPartProps> {
+  //private _appMode: AppMode = AppMode.SharePoint;
+  //private _theme: Theme = webLightTheme;
   private _isDarkTheme: boolean = false;
   private _environmentMessage: string = '';
 
   public render(): void {
     const element: React.ReactElement<IContentHealthManagerProps> = React.createElement(
-      ContentHealthManager,
+    ContentHealthManager,
+    {
+      description: this.properties.description,
+      isDarkTheme: this._isDarkTheme,
+      environmentMessage: this._environmentMessage,
+      hasTeamsContext: !!this.context.sdks.microsoftTeams,
+      userDisplayName: this.context.pageContext.user.displayName,
+      msGraphClientFactory: this.context.msGraphClientFactory,
+      wpContext: this.context
+    });
+
+
+    const fluentElement: React.ReactElement<FluentProviderProps> = React.createElement(
+      FluentProvider,
       {
-        description: this.properties.description,
-        isDarkTheme: this._isDarkTheme,
-        environmentMessage: this._environmentMessage,
-        hasTeamsContext: !!this.context.sdks.microsoftTeams,
-        userDisplayName: this.context.pageContext.user.displayName,
-        msGraphClientFactory: this.context.msGraphClientFactory,
-        wpContext: this.context
-      }
+        theme: teamsLightTheme
+      },
+      element    
     );
 
-    ReactDom.render(element, this.domElement);
+    ReactDom.render(fluentElement, this.domElement);
   }
 
   protected onInit(): Promise<void> {

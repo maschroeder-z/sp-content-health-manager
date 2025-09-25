@@ -20,7 +20,9 @@ https://learn.microsoft.com/en-us/sharepoint/dev/spfx/use-aad-tutorial
 https://learn.microsoft.com/en-us/sharepoint/dev/spfx/use-msgraph
 https://learn.microsoft.com/en-us/sharepoint/dev/spfx/use-aadhttpclient
 
+https://ravichandran.blog/2020/05/22/custom-property-pane-using-fluent-ui-panel-in-spfx/
 
+https://github.com/pnp/sp-dev-fx-webparts/blob/main/samples/react-fluentui-9/src/webparts/fluentUi9Demo/FluentUi9DemoWebPart.ts
 
 ## Used SharePoint Framework Version
 

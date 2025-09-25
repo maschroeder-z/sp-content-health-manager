@@ -5,12 +5,13 @@ import { ListView, type IViewField } from '@pnp/spfx-controls-react/lib/ListView
 import { SelectionMode } from '@fluentui/react';
 import { SitePicker } from "@pnp/spfx-controls-react/lib/SitePicker";
 import type { Site } from '../../../models/Site';
-import { Button, Dropdown, Option } from '@fluentui/react-components';
+import { Button, Dropdown, Option, Dialog, DialogSurface, DialogBody, DialogTitle, DialogContent, DialogActions, Portal } from '@fluentui/react-components';
 import GraphDataManager from '../../../services/GraphDataManager';
 import { PageProcessing } from '../../../Core/PageProcessing';
 import { Page } from '../../../models/Page';
 import { PageResult } from '../../../models/PageResult';
-
+import type { LinkInfo } from '../../../models/LinkInfo';
+import { SendRegular } from "@fluentui/react-icons";
 
 interface IContentHealthManagerState {  
   viewFields: IViewField[];
@@ -18,6 +19,8 @@ interface IContentHealthManagerState {
   SelectedSites: Site[];
   selectedSiteId: string | null;
   pageResults: PageResult[];  
+  isReportOpen?: boolean;
+  selectedPage?: Page | null;
 }
 
 export default class ContentHealthManager extends React.Component<IContentHealthManagerProps, IContentHealthManagerState> {
@@ -28,13 +31,17 @@ export default class ContentHealthManager extends React.Component<IContentHealth
       pageResults: [],
       SelectedSites: [],   
       selectedSiteId: null,
+      isReportOpen: false,
+      selectedPage: null,
       viewFields: [
         { name: 'title', displayName: 'Title', sorting: true, isResizable: true, minWidth: 120, linkPropertyName:'webUrl' },
         { name: 'name', displayName: 'Name', sorting: true, isResizable: true, minWidth: 100 },
         { name: 'webUrl', displayName: 'URL', sorting: false, isResizable: true, minWidth: 200 },
         { name: 'InProgress', displayName: 'InProgress', sorting: false, isResizable: false, minWidth: 50,
           render: (item, index, column) => {  
-            console.log(item);
+            return <>
+             <SendRegular />
+            </>;
             return item.InProgress ? "YES":"NO";
           }
         },        
@@ -88,6 +95,7 @@ export default class ContentHealthManager extends React.Component<IContentHealth
                 ))}
               </Dropdown>
               <Button onClick={() => this.StartBrokenLinkProcess()}>Find Broken Links</Button>
+              <Button onClick={() => this.ShowPageReport()}>Open details</Button>
             </div>
             <div className={'ms-Grid-col ms-sm12 ms-md8 ms-lg9'}>
               <ListView                
@@ -95,12 +103,59 @@ export default class ContentHealthManager extends React.Component<IContentHealth
                 viewFields={this.state.viewFields}
                 compact={true}                
                 selectionMode={SelectionMode.single}
+                selection={this.onListSelectionChanged}
               />
             </div>
           </div>
         </div>
+        {/* Manual backdrop to ensure dimmed background in SPFx */}
+        {this.state.isReportOpen ? (
+          <Portal>
+            <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.4)', zIndex: 1000 }} />
+          </Portal>
+        ) : null}
+        <Dialog open={!!this.state.isReportOpen} onOpenChange={(_: any, data: any) => this.setState({ isReportOpen: !!data.open })} modalType={'alert'}>
+          <DialogSurface style={{ zIndex: 1001, background: '#ffffff', borderRadius: 6, boxShadow: '0 8px 24px rgba(0,0,0,0.2)' }}>
+            <DialogBody>
+              <DialogTitle>Page report</DialogTitle>
+              <DialogContent style={{ padding: 12 }}>
+                {this.state.selectedPage ? (
+                  <div>
+                    <div><strong>Title:</strong> {this.state.selectedPage.title || this.state.selectedPage.name}</div>
+                    <div><strong>URL:</strong> <a href={this.state.selectedPage.webUrl} target={'_blank'} rel={'noreferrer'}>{this.state.selectedPage.webUrl}</a></div>
+                    {(() => {
+                      const entry = this.state.pageResults.filter((x: PageResult) => x.pageID === this.state.selectedPage!.id)[0];
+                      if (entry) {
+                        return (
+                          <div style={{ marginTop: 8 }}>
+                            <div><strong>Total links:</strong> {entry.Links.length}</div>
+                            <div><strong>Broken links:</strong> {entry.Links.filter((l: LinkInfo) => l.IsBroken).length}</div>
+                          </div>
+                        );
+                      }
+                      return <div style={{ marginTop: 8 }}>No link analysis available.</div>;
+                    })()}
+                  </div>
+                ) : (
+                  <div>No item selected.</div>
+                )}
+              </DialogContent>
+              <DialogActions>
+                <Button appearance={'secondary'} onClick={() => this.setState({ isReportOpen: false })}>Close</Button>
+              </DialogActions>
+            </DialogBody>
+          </DialogSurface>
+        </Dialog>
       </section>
     );
+  }
+
+  private ShowPageReport():void
+  {
+    if (!this.state.selectedPage) {
+      return;
+    }
+    this.setState({ isReportOpen: true });
   }
 
   private async StartBrokenLinkProcess(): Promise<void>
@@ -163,5 +218,10 @@ export default class ContentHealthManager extends React.Component<IContentHealth
       pageEntries: pages,
       selectedSiteId: data.optionValue
     });
+  }
+
+  private onListSelectionChanged = (items: any[]): void => {
+    const selected = (items && items.length > 0) ? (items[0] as Page) : null;
+    this.setState({ selectedPage: selected });
   }
 }

@@ -22,6 +22,17 @@ export class PageProcessing
                     if (webpart.innerHtml && typeof webpart.innerHtml === 'string' && webpart.innerHtml.trim().length > 0) {
                         links=links.concat(this.ExtractLinksFromContent(webpart.innerHtml));
                     }
+                    if (typeof webpart.data !== "undefined" && webpart.data !== null)
+                    {                        
+                        for (const link of webpart.data?.serverProcessedContent.links!) {
+                            console.log(link);
+                            links.push({
+                                IsBroken: false,
+                                title: link.key,
+                                url: link.value
+                            });                            
+                        }
+                    }
                 }
             }
         }
@@ -43,11 +54,9 @@ export class PageProcessing
 
             const doFetch = async (method: 'HEAD') => {
                 //const controller = new AbortController();
-                //const timeout = setTimeout(() => controller.abort(), timeoutMs);
-                console.log(url);
+                //const timeout = setTimeout(() => controller.abort(), timeoutMs);                
                 try {
-                    const resp = await fetch(url, { method, mode: 'no-cors' });
-                    console.log("Result:", resp)
+                    const resp = await fetch(url, { method, mode: 'no-cors' });                    
                     if (resp.status === 200 || (resp.type === "opaque" && resp.status === 0)) 
                         link.IsBroken = false;
                     else
