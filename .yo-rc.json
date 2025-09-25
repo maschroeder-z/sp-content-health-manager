@@ -1,0 +1,18 @@
+{
+  "@microsoft/generator-sharepoint": {
+    "plusBeta": false,
+    "isCreatingSolution": true,
+    "nodeVersion": "18.19.1",
+    "sdksVersions": {},
+    "version": "1.21.1",
+    "libraryName": "sp-content-health-manager",
+    "libraryId": "61faf8a2-2f3f-49f0-993e-fa1db6c70fb2",
+    "environment": "spo",
+    "packageManager": "npm",
+    "solutionName": "sp-content-health-manager",
+    "solutionShortDescription": "sp-content-health-manager description",
+    "skipFeatureDeployment": true,
+    "isDomainIsolated": false,
+    "componentType": "webpart"
+  }
+}

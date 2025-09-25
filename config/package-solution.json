@@ -1,0 +1,41 @@
+{
+  "$schema": "https://developer.microsoft.com/json-schemas/spfx-build/package-solution.schema.json",
+  "solution": {
+    "name": "sp-content-health-manager-client-side-solution",
+    "id": "61faf8a2-2f3f-49f0-993e-fa1db6c70fb2",
+    "version": "1.0.0.0",
+    "includeClientSideAssets": true,
+    "skipFeatureDeployment": true,    
+    "isDomainIsolated": false,
+    "iconPath": "assets/96x96.png",
+    "developer": {
+      "name": "Marc Andre Schröder-Zhou",
+      "websiteUrl": "https://www.dev-sky.net",
+      "privacyUrl": "",
+      "termsOfUseUrl": "https://go.microsoft.com/fwlink/?linkid=2041178",
+      "mpnId": "6499491"
+    },
+    "metadata": {
+      "shortDescription": {
+        "default": "sp-content-health-manager description"
+      },
+      "longDescription": {
+        "default": "sp-content-health-manager description"
+      },
+      "screenshotPaths": [],
+      "videoUrl": "",
+      "categories": []
+    },
+    "features": [
+      {
+        "title": "Content Health Manager",
+        "description": "The feature that activates elements of the Content Health Manager solution.",
+        "id": "ac57c893-8be0-4d4e-9b78-7367235289b2",
+        "version": "1.0.0.0"
+      }
+    ]
+  },
+  "paths": {
+    "zippedPackage": "solution/sp-content-health-manager.sppkg"
+  }
+}
