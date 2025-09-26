@@ -1,15 +1,18 @@
 import { CanvasStructure } from "../models/CanvasStructure";
-import { LinkInfo } from "../models/LinkInfo";
+import { LinkInfo } from "../models/LinkInfo"; 
+//import * as MicrosoftGraph from "@microsoft/microsoft-graph-types-beta"; [MicrosoftGraph.SitePage]
+//import * as MicrosoftGraph from "@microsoft/microsoft-graph-types"
+//import * as MicrosoftGraphBeta from "@microsoft/microsoft-graph-types-beta"
 
 export class PageProcessing
 {
     public async AnalyzePageContent(canvas: CanvasStructure) : Promise<LinkInfo[]|null>
-    {
+    {        
         if (!canvas || !Array.isArray(canvas.horizontalSections)) {
             return null;
         }
 
-        let links : LinkInfo[] = [];
+        let links :  LinkInfo[] = [];
         for (const section of canvas.horizontalSections || []) {
             for (const column of section.columns || []) {
                 for (const webpart of column.webparts || []) {

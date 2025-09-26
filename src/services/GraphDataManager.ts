@@ -1,6 +1,9 @@
 import { MSGraphClientFactory, MSGraphClientV3 } from '@microsoft/sp-http';
 import type { Page } from '../models/Page';
 
+//import * as MicrosoftGraph from "@microsoft/microsoft-graph-types-beta"; //[MicrosoftGraph.SitePage]
+import * as MicrosoftGraphBeta from "@microsoft/microsoft-graph-types-beta"
+
 export class GraphDataManager {
   private readonly graphClientPromise: Promise<MSGraphClientV3>;
 
@@ -81,6 +84,18 @@ export class GraphDataManager {
     }));
     return items;
   }
+
+  public async GetLibraries(siteID: string,): Promise<MicrosoftGraphBeta.List[]> {
+    const client = await this.graphClientPromise;
+
+    const response = await client
+      .api(`/sites/${encodeURIComponent(siteID)}/lists`)
+      .version('v1.0')
+      .select(['id', 'name', 'displayName', 'webUrl', 'createdDateTime', 'lastModifiedDateTime'].join(','))
+      .get();
+    return response.value as MicrosoftGraphBeta.List[];
+  }
+
 }
 
 export default GraphDataManager;

@@ -29,6 +29,7 @@
     "@microsoft/eslint-config-spfx": "1.21.1",
     "@microsoft/eslint-plugin-spfx": "1.21.1",
     "@microsoft/microsoft-graph-types": "^2.40.0",
+    "@microsoft/microsoft-graph-types-beta": "^0.43.0-preview",
     "@microsoft/rush-stack-compiler-5.3": "0.1.0",
     "@microsoft/sp-build-web": "1.21.1",
     "@microsoft/sp-module-interfaces": "1.21.1",

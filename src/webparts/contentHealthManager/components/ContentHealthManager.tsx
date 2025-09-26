@@ -5,16 +5,18 @@ import { ListView, type IViewField } from '@pnp/spfx-controls-react/lib/ListView
 import { SelectionMode } from '@fluentui/react';
 import { SitePicker } from "@pnp/spfx-controls-react/lib/SitePicker";
 import type { Site } from '../../../models/Site';
-import { Button, Dropdown, Option, Dialog, DialogSurface, DialogBody, DialogTitle, DialogContent, DialogActions, Portal } from '@fluentui/react-components';
+import { Button, Dropdown, Option, Dialog, DialogSurface, DialogBody, DialogTitle, DialogContent, DialogActions } from '@fluentui/react-components';
 import GraphDataManager from '../../../services/GraphDataManager';
 import { PageProcessing } from '../../../Core/PageProcessing';
 import { Page } from '../../../models/Page';
 import { PageResult } from '../../../models/PageResult';
 import type { LinkInfo } from '../../../models/LinkInfo';
 import { SendRegular } from "@fluentui/react-icons";
+import * as MicrosoftGraphBeta from "@microsoft/microsoft-graph-types-beta"
 
 interface IContentHealthManagerState {  
   viewFields: IViewField[];
+  libraryEntries: MicrosoftGraphBeta.List[];
   pageEntries: Page[];
   SelectedSites: Site[];
   selectedSiteId: string | null;
@@ -24,12 +26,19 @@ interface IContentHealthManagerState {
 }
 
 export default class ContentHealthManager extends React.Component<IContentHealthManagerProps, IContentHealthManagerState> {
+  viewFieldsLibs: IViewField[] = [
+    { name: 'displayName', displayName: 'Title', sorting: true, isResizable: true, minWidth: 120, linkPropertyName:'webUrl' },
+    { name: 'name', displayName: 'Name', sorting: true, isResizable: true, minWidth: 100 },
+    { name: 'lastModifiedDateTime', displayName: 'last change', sorting: true, isResizable: true, minWidth: 100 },
+    { name: 'createdDateTime', displayName: 'created at', sorting: true, isResizable: true, minWidth: 100 }
+  ];
   constructor(props: IContentHealthManagerProps) {
     super(props);
 
     this.state = {        
       pageResults: [],
       SelectedSites: [],   
+      libraryEntries: [],
       selectedSiteId: null,
       isReportOpen: false,
       selectedPage: null,
@@ -98,24 +107,25 @@ export default class ContentHealthManager extends React.Component<IContentHealth
               <Button onClick={() => this.ShowPageReport()}>Open details</Button>
             </div>
             <div className={'ms-Grid-col ms-sm12 ms-md8 ms-lg9'}>
+              <h3>Page library</h3>
               <ListView                
                 items={this.state.pageEntries}
                 viewFields={this.state.viewFields}
                 compact={true}                
                 selectionMode={SelectionMode.single}
-                selection={this.onListSelectionChanged}
+                selection={this.onListSelectionChanged}/>
+              <h3>Site libraries</h3>
+              <ListView                
+                items={this.state.libraryEntries}
+                viewFields={this.viewFieldsLibs}
+                compact={true}                
+                selectionMode={SelectionMode.single}
               />
-            </div>
+            </div>            
           </div>
-        </div>
-        {/* Manual backdrop to ensure dimmed background in SPFx */}
-        {this.state.isReportOpen ? (
-          <Portal>
-            <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.4)', zIndex: 1000 }} />
-          </Portal>
-        ) : null}
+        </div>                
         <Dialog open={!!this.state.isReportOpen} onOpenChange={(_: any, data: any) => this.setState({ isReportOpen: !!data.open })} modalType={'alert'}>
-          <DialogSurface style={{ zIndex: 1001, background: '#ffffff', borderRadius: 6, boxShadow: '0 8px 24px rgba(0,0,0,0.2)' }}>
+          <DialogSurface>
             <DialogBody>
               <DialogTitle>Page report</DialogTitle>
               <DialogContent style={{ padding: 12 }}>
@@ -217,6 +227,11 @@ export default class ContentHealthManager extends React.Component<IContentHealth
     this.setState({ 
       pageEntries: pages,
       selectedSiteId: data.optionValue
+    });
+    const libraries = await dataManager.GetLibraries(data.optionValue);
+    console.log(libraries);
+    this.setState({ 
+      libraryEntries: libraries      
     });
   }
 

@@ -11,7 +11,7 @@ import { IReadonlyTheme } from '@microsoft/sp-component-base';
 import * as strings from 'ContentHealthManagerWebPartStrings';
 import ContentHealthManager from './components/ContentHealthManager';
 import { IContentHealthManagerProps } from './components/IContentHealthManagerProps';
-import { FluentProvider, FluentProviderProps, teamsLightTheme } from '@fluentui/react-components';
+import { FluentProvider, FluentProviderProps, IdPrefixProvider, teamsLightTheme } from '@fluentui/react-components';
 
 export interface IContentHealthManagerWebPartProps {
   description: string;
@@ -49,7 +49,9 @@ export default class ContentHealthManagerWebPart extends BaseClientSideWebPart<I
       element    
     );
 
-    ReactDom.render(fluentElement, this.domElement);
+    const temp: React.ReactElement = React.createElement(IdPrefixProvider,{value:"msz"},fluentElement);
+
+    ReactDom.render(temp, this.domElement);
   }
 
   protected onInit(): Promise<void> {
