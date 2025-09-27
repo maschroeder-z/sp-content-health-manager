@@ -13,6 +13,8 @@ https://pnp.github.io/sp-dev-fx-controls-react/controls/ListView/
 
 https://learn.microsoft.com/en-us/graph/api/site-getallsites?view=graph-rest-1.0&tabs=http
 
+https://learn.microsoft.com/en-us/graph/api/list-list-operations?view=graph-rest-1.0&tabs=http
+
 PERMISSION
 https://learn.microsoft.com/en-us/graph/auth/auth-concepts
 https://www.dev-sky.blog/2024/05/use-microsoft-graph-permission-in-spfx.html
@@ -23,6 +25,8 @@ https://learn.microsoft.com/en-us/sharepoint/dev/spfx/use-aadhttpclient
 https://ravichandran.blog/2020/05/22/custom-property-pane-using-fluent-ui-panel-in-spfx/
 
 https://github.com/pnp/sp-dev-fx-webparts/blob/main/samples/react-fluentui-9/src/webparts/fluentUi9Demo/FluentUi9DemoWebPart.ts
+
+https://devsky365.sharepoint.com/sites/demo03/_api/web/lists/GetbyTitle('Mein%20SharePoint%202010%20Entwicklerbuch')
 
 ## Used SharePoint Framework Version
 

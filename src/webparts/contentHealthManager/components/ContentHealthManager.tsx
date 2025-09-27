@@ -12,11 +12,15 @@ import { Page } from '../../../models/Page';
 import { PageResult } from '../../../models/PageResult';
 import type { LinkInfo } from '../../../models/LinkInfo';
 import { SendRegular } from "@fluentui/react-icons";
-import * as MicrosoftGraphBeta from "@microsoft/microsoft-graph-types-beta"
+import { ListInformation } from '../../../models/REST/ListInformation';
+import { FieldDateRenderer } from '@pnp/spfx-controls-react';
+import { ListTemplateType } from '../../../Core/ListTemplateTypes';
+//import * as MicrosoftGraphBeta from "@microsoft/microsoft-graph-types-beta"
 
 interface IContentHealthManagerState {  
   viewFields: IViewField[];
-  libraryEntries: MicrosoftGraphBeta.List[];
+  //libraryEntries: MicrosoftGraphBeta.List[];
+  libraryEntries: ListInformation[];
   pageEntries: Page[];
   SelectedSites: Site[];
   selectedSiteId: string | null;
@@ -26,11 +30,45 @@ interface IContentHealthManagerState {
 }
 
 export default class ContentHealthManager extends React.Component<IContentHealthManagerProps, IContentHealthManagerState> {
+  // BaseTemplate BaseType EnableAttachments EnableFolderCreation EnableVersioning ForceCheckout ItemCount LastItemModifiedDate LastItemUserModifiedDate
   viewFieldsLibs: IViewField[] = [
-    { name: 'displayName', displayName: 'Title', sorting: true, isResizable: true, minWidth: 120, linkPropertyName:'webUrl' },
-    { name: 'name', displayName: 'Name', sorting: true, isResizable: true, minWidth: 100 },
-    { name: 'lastModifiedDateTime', displayName: 'last change', sorting: true, isResizable: true, minWidth: 100 },
-    { name: 'createdDateTime', displayName: 'created at', sorting: true, isResizable: true, minWidth: 100 }
+    { name: 'Title', displayName: 'Title', sorting: true, isResizable: true, minWidth: 120, linkPropertyName:'webUrl' },
+    { 
+      name: 'BaseTemplate', displayName: 'Template', sorting: true, isResizable: true, minWidth: 100,
+      render: (item:ListInformation, index, column) => {        
+        return ListTemplateType[item.BaseTemplate];
+      }
+    },
+    { 
+      name: 'Created', displayName: 'created at', sorting: true, isResizable: true, minWidth: 100,
+      render: (item:ListInformation, index, column) => {
+        const date = new Date(item.Created);
+        return <FieldDateRenderer text={date.toLocaleDateString()} />;    
+      }
+    },
+    { 
+      name: 'LastItemModifiedDate', displayName: 'Last change', sorting: true, isResizable: true, minWidth: 120, linkPropertyName:'webUrl',
+      render: (item:ListInformation, index, column) => {
+        const date = new Date(item.LastItemModifiedDate);
+        return <FieldDateRenderer text={date.toLocaleString()} />;  
+      }
+    },
+    { 
+      name: 'LastItemUserModifiedDate', displayName: 'User changed', sorting: true, isResizable: true, minWidth: 120, linkPropertyName:'webUrl',
+      render: (item:ListInformation, index, column) => {
+        const date = new Date(item.LastItemUserModifiedDate);
+        return <FieldDateRenderer text={date.toLocaleString()} />;
+      }
+    },
+    { 
+      name: 'LastItemDeletedDate', displayName: 'last deletion', sorting: true, isResizable: true, minWidth: 100,
+      render: (item:ListInformation, index, column) => {
+        const date = new Date(item.LastItemDeletedDate);
+        return <FieldDateRenderer text={date.toLocaleString()} />;
+      }
+    },
+    { name: 'ItemCount', displayName: 'Items', sorting: true, isResizable: true, minWidth: 120, linkPropertyName:'webUrl' },
+    { name: 'Description', displayName: 'Descriptione', sorting: true, isResizable: true, minWidth: 100 }
   ];
   constructor(props: IContentHealthManagerProps) {
     super(props);
@@ -114,7 +152,8 @@ export default class ContentHealthManager extends React.Component<IContentHealth
                 compact={true}                
                 selectionMode={SelectionMode.single}
                 selection={this.onListSelectionChanged}/>
-              <h3>Site libraries</h3>
+              <h3>Site libraries & lists</h3>
+              
               <ListView                
                 items={this.state.libraryEntries}
                 viewFields={this.viewFieldsLibs}
@@ -228,11 +267,18 @@ export default class ContentHealthManager extends React.Component<IContentHealth
       pageEntries: pages,
       selectedSiteId: data.optionValue
     });
-    const libraries = await dataManager.GetLibraries(data.optionValue);
+    /*const libraries = await dataManager.GetLibraries(data.optionValue);
     console.log(libraries);
     this.setState({ 
       libraryEntries: libraries      
-    });
+    });*/
+    const siteInfo : Site = this.state.SelectedSites.filter(x=>x.id === data.optionValue)[0];
+    console.log(siteInfo);
+    const libraries = await dataManager.GetAllLists(siteInfo.url);
+    console.log(libraries);
+    this.setState({ 
+      libraryEntries: libraries      
+    });    
   }
 
   private onListSelectionChanged = (items: any[]): void => {

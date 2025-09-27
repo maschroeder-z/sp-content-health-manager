@@ -1,5 +1,6 @@
 import { MSGraphClientFactory, MSGraphClientV3 } from '@microsoft/sp-http';
 import type { Page } from '../models/Page';
+import type { ListInformation } from '../models/REST/ListInformation';
 
 //import * as MicrosoftGraph from "@microsoft/microsoft-graph-types-beta"; //[MicrosoftGraph.SitePage]
 import * as MicrosoftGraphBeta from "@microsoft/microsoft-graph-types-beta"
@@ -94,6 +95,90 @@ export class GraphDataManager {
       .select(['id', 'name', 'displayName', 'webUrl', 'createdDateTime', 'lastModifiedDateTime'].join(','))
       .get();
     return response.value as MicrosoftGraphBeta.List[];
+  }
+
+  public async GetAllLists(siteUrl: string): Promise<ListInformation[]> {
+    try {
+      // Ensure the siteUrl has proper format and add the REST API endpoint
+      const apiUrl = `${siteUrl}/_api/web/lists`;
+      
+      const response = await fetch(apiUrl, {
+        method: 'GET',
+        headers: {
+          'Accept': 'application/json;odata=verbose',
+          'Content-Type': 'application/json'
+        },
+        credentials: 'include' // Include cookies for authentication
+      });
+
+      if (!response.ok) {
+        throw new Error(`HTTP error! status: ${response.status}`);
+      }
+
+      const data = await response.json();
+      
+      // The SharePoint REST API returns data in a 'd' property with 'results' array
+      const lists = data.d?.results || [];      
+      return lists.map((list: any) => ({
+        AllowContentTypes: list.AllowContentTypes,
+        BaseTemplate: list.BaseTemplate,
+        BaseType: list.BaseType,
+        ContentTypesEnabled: list.ContentTypesEnabled,
+        CrawlNonDefaultViews: list.CrawlNonDefaultViews,
+        Created: list.Created,
+        CurrentChangeToken: list.CurrentChangeToken,
+        DefaultContentApprovalWorkflowId: list.DefaultContentApprovalWorkflowId,
+        DefaultItemOpenUseListSetting: list.DefaultItemOpenUseListSetting,
+        Description: list.Description,
+        Direction: list.Direction,
+        DisableCommenting: list.DisableCommenting,
+        DisableGridEditing: list.DisableGridEditing,
+        DocumentTemplateUrl: list.DocumentTemplateUrl,
+        DraftVersionVisibility: list.DraftVersionVisibility,
+        EnableAttachments: list.EnableAttachments,
+        EnableFolderCreation: list.EnableFolderCreation,
+        EnableMinorVersions: list.EnableMinorVersions,
+        EnableModeration: list.EnableModeration,
+        EnableRequestSignOff: list.EnableRequestSignOff,
+        EnableVersioning: list.EnableVersioning,
+        EntityTypeName: list.EntityTypeName,
+        ExemptFromBlockDownloadOfNonViewableFiles: list.ExemptFromBlockDownloadOfNonViewableFiles,
+        FileSavePostProcessingEnabled: list.FileSavePostProcessingEnabled,
+        ForceCheckout: list.ForceCheckout,
+        HasExternalDataSource: list.HasExternalDataSource,
+        Hidden: list.Hidden,
+        Id: list.Id,
+        ImagePath: list.ImagePath,
+        ImageUrl: list.ImageUrl,
+        DefaultSensitivityLabelForLibrary: list.DefaultSensitivityLabelForLibrary,
+        SensitivityLabelToEncryptOnDownloadForLibrary: list.SensitivityLabelToEncryptOnDownloadForLibrary,
+        IrmEnabled: list.IrmEnabled,
+        IrmExpire: list.IrmExpire,
+        IrmReject: list.IrmReject,
+        IsApplicationList: list.IsApplicationList,
+        IsCatalog: list.IsCatalog,
+        IsPrivate: list.IsPrivate,
+        ItemCount: list.ItemCount,
+        LastItemDeletedDate: list.LastItemDeletedDate,
+        LastItemModifiedDate: list.LastItemModifiedDate,
+        LastItemUserModifiedDate: list.LastItemUserModifiedDate,
+        ListExperienceOptions: list.ListExperienceOptions,
+        ListItemEntityTypeFullName: list.ListItemEntityTypeFullName,
+        MajorVersionLimit: list.MajorVersionLimit,
+        MajorWithMinorVersionsLimit: list.MajorWithMinorVersionsLimit,
+        MultipleDataList: list.MultipleDataList,
+        NoCrawl: list.NoCrawl,
+        ParentWebPath: list.ParentWebPath,
+        ParentWebUrl: list.ParentWebUrl,
+        ParserDisabled: list.ParserDisabled,
+        ServerTemplateCanCreateFolders: list.ServerTemplateCanCreateFolders,
+        TemplateFeatureId: list.TemplateFeatureId,
+        Title: list.Title
+      }));
+    } catch (error) {
+      console.error('Error fetching lists:', error);
+      throw error;
+    }
   }
 
 }
