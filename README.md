@@ -28,6 +28,10 @@ https://github.com/pnp/sp-dev-fx-webparts/blob/main/samples/react-fluentui-9/src
 
 https://devsky365.sharepoint.com/sites/demo03/_api/web/lists/GetbyTitle('Mein%20SharePoint%202010%20Entwicklerbuch')
 
+REST&CAML -> see Postman
+https://{{targetHost}}/sites/demo03/_api/web/lists('5a90180b-8f9c-4128-8483-d46930cd8473')/GetItems(query=@v1)?@v1={'ViewXml':'<View><Query><Where><Leq><FieldRef Name=Modified/><Value Type=DateTime>2024-10-26T15:54:19</Value></Leq></Where></Query></View>'}&$expand=file
+{'ViewXml':'<View><Query><Where><Leq><FieldRef Name=Modified/><Value Type=DateTime>2024-10-26T15:54:19</Value></Leq></Where></Query></View>'}
+
 ## Used SharePoint Framework Version
 
 ![version](https://img.shields.io/badge/version-1.21.1-green.svg)

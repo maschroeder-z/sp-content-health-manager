@@ -2,10 +2,10 @@ import * as React from 'react';
 import styles from './ContentHealthManager.module.scss';
 import type { IContentHealthManagerProps } from './IContentHealthManagerProps';
 import { ListView, type IViewField } from '@pnp/spfx-controls-react/lib/ListView';
-import { SelectionMode } from '@fluentui/react';
+import { DatePicker, SelectionMode } from '@fluentui/react';
 import { SitePicker } from "@pnp/spfx-controls-react/lib/SitePicker";
 import type { Site } from '../../../models/Site';
-import { Button, Dropdown, Option, Dialog, DialogSurface, DialogBody, DialogTitle, DialogContent, DialogActions } from '@fluentui/react-components';
+import { Button, Dropdown, Option, Dialog, DialogSurface, DialogBody, DialogTitle, DialogContent, DialogActions, Field } from '@fluentui/react-components';
 import GraphDataManager from '../../../services/GraphDataManager';
 import { PageProcessing } from '../../../Core/PageProcessing';
 import { Page } from '../../../models/Page';
@@ -27,6 +27,7 @@ interface IContentHealthManagerState {
   pageResults: PageResult[];  
   isReportOpen?: boolean;
   selectedPage?: Page | null;
+  dateStartDate: Date | null | undefined;
 }
 
 export default class ContentHealthManager extends React.Component<IContentHealthManagerProps, IContentHealthManagerState> {
@@ -73,7 +74,8 @@ export default class ContentHealthManager extends React.Component<IContentHealth
   constructor(props: IContentHealthManagerProps) {
     super(props);
 
-    this.state = {        
+    this.state = {     
+      dateStartDate: new Date(),   
       pageResults: [],
       SelectedSites: [],   
       libraryEntries: [],
@@ -153,7 +155,18 @@ export default class ContentHealthManager extends React.Component<IContentHealth
                 selectionMode={SelectionMode.single}
                 selection={this.onListSelectionChanged}/>
               <h3>Site libraries & lists</h3>
-              
+              <Field label="Select a date">
+                <DatePicker 
+                  value={new Date()}
+                  minDate={new Date(2000,0,1)}
+                  maxDate={new Date()}
+                  placeholder="Select a query date..." 
+                  onSelectDate={(selectedDate:Date|null) => this.setState(
+                    {dateStartDate: selectedDate}
+                  )}
+                />
+              </Field>
+              <Button onClick={() => this.StartQueryLstAndLibraries()}>Find old data</Button>
               <ListView                
                 items={this.state.libraryEntries}
                 viewFields={this.viewFieldsLibs}
@@ -199,6 +212,10 @@ export default class ContentHealthManager extends React.Component<IContentHealth
     );
   }
 
+  public async componentDidMount(): Promise<void> {
+    
+  }
+
   private ShowPageReport():void
   {
     if (!this.state.selectedPage) {
@@ -222,7 +239,7 @@ export default class ContentHealthManager extends React.Component<IContentHealth
     console.log(`Starting broken link process for site: ${this.state.selectedSiteId}`);
     console.log(`Processing ${this.state.pageEntries.length} pages...`);
 
-    const dataManager = new GraphDataManager(this.props.msGraphClientFactory);
+    const dataManager = new GraphDataManager(this.props.msGraphClientFactory, this.props.spHTTPClient);
     const pageAnalyzer = new PageProcessing();
     try {
       // Iterate over all page entries and get their full content
@@ -256,12 +273,26 @@ export default class ContentHealthManager extends React.Component<IContentHealth
     }
   }
 
-
-  public async componentDidMount(): Promise<void> {
-    
+  public async CollectItemsFromListAndLibraries():Promise<void>
+  {
+    const dataManager = new GraphDataManager(this.props.msGraphClientFactory, this.props.spHTTPClient);
+    const site : Site = this.GetSelectedSite();
+    for (const listInfo of this.state.libraryEntries) {
+      const items = await dataManager.Query4ItemByDate(
+        site.url,
+        listInfo.Id,
+        this.state.dateStartDate!
+      );
+      console.log(items);
+    }
   }
+
+  private async StartQueryLstAndLibraries(): Promise<void> {
+    this.CollectItemsFromListAndLibraries();
+  }
+
   private onDropdDownSelectionChanged = async (event: any, data: any): Promise<void> => {    
-    const dataManager = new GraphDataManager(this.props.msGraphClientFactory);
+    const dataManager = new GraphDataManager(this.props.msGraphClientFactory, this.props.spHTTPClient);
     const pages = await dataManager.GetPages4Site(data.optionValue);
     this.setState({ 
       pageEntries: pages,
@@ -284,5 +315,10 @@ export default class ContentHealthManager extends React.Component<IContentHealth
   private onListSelectionChanged = (items: any[]): void => {
     const selected = (items && items.length > 0) ? (items[0] as Page) : null;
     this.setState({ selectedPage: selected });
+  }
+
+  private GetSelectedSite() : Site
+  {
+    return this.state.SelectedSites.filter(x=>x.id === this.state.selectedSiteId)[0] as Site;
   }
 }
