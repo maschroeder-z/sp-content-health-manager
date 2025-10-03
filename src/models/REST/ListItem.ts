@@ -35,7 +35,7 @@ export interface SPListItem {
     OData__CopySource: any
     CheckoutUserId: any
     OData__UIVersionString: string
-    GUID: string
+    GUID: string    
   }
   
   export interface Metadata {

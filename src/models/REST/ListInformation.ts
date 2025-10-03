@@ -1,4 +1,5 @@
 import { ListTemplateType } from "../../Core/ListTemplateTypes";
+import { SPListItem } from "./ListItem";
 
 export interface ListInformation {
     AllowContentTypes: boolean;
@@ -54,5 +55,6 @@ export interface ListInformation {
     ParserDisabled: boolean;
     ServerTemplateCanCreateFolders: boolean;
     TemplateFeatureId: string; // Guid
-    Title?: string;
+    Title?: string;    
+    FoundItems?: SPListItem[] //https://blog.aterentiev.com/using-pnp-field-controls-in-pnp
   }

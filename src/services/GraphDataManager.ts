@@ -176,7 +176,7 @@ export class GraphDataManager {
         ParserDisabled: list.ParserDisabled,
         ServerTemplateCanCreateFolders: list.ServerTemplateCanCreateFolders,
         TemplateFeatureId: list.TemplateFeatureId,
-        Title: list.Title
+        Title: list.Title        
       }));
     } catch (error) {
       console.error('Error fetching lists:', error);
@@ -267,7 +267,7 @@ export class GraphDataManager {
         OData__CopySource: item.OData__CopySource,
         CheckoutUserId: item.CheckoutUserId,
         OData__UIVersionString: item.OData__UIVersionString,
-        GUID: item.GUID
+        GUID: item.GUID        
       }));
     } catch (error) {
       console.error('Error querying items by date:', error);

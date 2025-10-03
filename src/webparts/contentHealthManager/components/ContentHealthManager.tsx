@@ -13,7 +13,7 @@ import { PageResult } from '../../../models/PageResult';
 import type { LinkInfo } from '../../../models/LinkInfo';
 import { SendRegular } from "@fluentui/react-icons";
 import { ListInformation } from '../../../models/REST/ListInformation';
-import { FieldDateRenderer } from '@pnp/spfx-controls-react';
+import { FieldDateRenderer,FieldTextRenderer } from '@pnp/spfx-controls-react';
 import { ListTemplateType } from '../../../Core/ListTemplateTypes';
 //import * as MicrosoftGraphBeta from "@microsoft/microsoft-graph-types-beta"
 
@@ -28,9 +28,32 @@ interface IContentHealthManagerState {
   isReportOpen?: boolean;
   selectedPage?: Page | null;
   dateStartDate: Date | null | undefined;
+  isLibraryReportOpen?: boolean;
+  selectedLibrary?: ListInformation | null;
 }
 
 export default class ContentHealthManager extends React.Component<IContentHealthManagerProps, IContentHealthManagerState> {
+  // View fields for found items in library report dialog
+  viewFieldsFoundItems: IViewField[] = [
+    { name: 'Id', displayName: 'ID', sorting: true, isResizable: true, minWidth: 80 },
+    { name: 'Title', displayName: 'Title', sorting: true, isResizable: true, minWidth: 200 },
+    { 
+      name: 'Created', displayName: 'Created', sorting: true, isResizable: true, minWidth: 120,
+      render: (item: any, index, column) => {
+        const date = new Date(item.Created);
+        return <FieldDateRenderer text={date.toLocaleDateString()} />;    
+      }
+    },
+    { 
+      name: 'Modified', displayName: 'Modified', sorting: true, isResizable: true, minWidth: 120,
+      render: (item: any, index, column) => {
+        const date = new Date(item.Modified);
+        return <FieldDateRenderer text={date.toLocaleDateString()} />;    
+      }
+    },
+    { name: 'ContentTypeId', displayName: 'Content Type', sorting: true, isResizable: true, minWidth: 150 }
+  ];
+
   // BaseTemplate BaseType EnableAttachments EnableFolderCreation EnableVersioning ForceCheckout ItemCount LastItemModifiedDate LastItemUserModifiedDate
   viewFieldsLibs: IViewField[] = [
     { name: 'Title', displayName: 'Title', sorting: true, isResizable: true, minWidth: 120, linkPropertyName:'webUrl' },
@@ -69,7 +92,18 @@ export default class ContentHealthManager extends React.Component<IContentHealth
       }
     },
     { name: 'ItemCount', displayName: 'Items', sorting: true, isResizable: true, minWidth: 120, linkPropertyName:'webUrl' },
-    { name: 'Description', displayName: 'Descriptione', sorting: true, isResizable: true, minWidth: 100 }
+    { name: 'FoundItems', displayName: 'Found', sorting: true, isResizable: true, minWidth: 120, linkPropertyName:'webUrl',
+      render: (item:ListInformation, index, column) => {     
+        const entry = this.state.libraryEntries.filter(x=>x.Id === item.Id)[0];
+        if (typeof entry.FoundItems !== "undefined" && entry.FoundItems !== null)
+        {
+          return <FieldTextRenderer text={`Found: ${entry.FoundItems?.length}`} />;
+        }
+        else
+          return <FieldTextRenderer text="start query fo results" />;
+      }
+     },
+    { name: 'Description', displayName: 'Description', sorting: true, isResizable: true, minWidth: 100 }
   ];
   constructor(props: IContentHealthManagerProps) {
     super(props);
@@ -82,6 +116,8 @@ export default class ContentHealthManager extends React.Component<IContentHealth
       selectedSiteId: null,
       isReportOpen: false,
       selectedPage: null,
+      isLibraryReportOpen: false,
+      selectedLibrary: null,
       viewFields: [
         { name: 'title', displayName: 'Title', sorting: true, isResizable: true, minWidth: 120, linkPropertyName:'webUrl' },
         { name: 'name', displayName: 'Name', sorting: true, isResizable: true, minWidth: 100 },
@@ -167,11 +203,13 @@ export default class ContentHealthManager extends React.Component<IContentHealth
                 />
               </Field>
               <Button onClick={() => this.StartQueryLstAndLibraries()}>Find old data</Button>
+              <Button onClick={() => this.ShowLibraryReport()}>Show details</Button>
               <ListView                
                 items={this.state.libraryEntries}
                 viewFields={this.viewFieldsLibs}
                 compact={true}                
                 selectionMode={SelectionMode.single}
+                selection={this.onLibrarySelectionChanged}
               />
             </div>            
           </div>
@@ -208,12 +246,73 @@ export default class ContentHealthManager extends React.Component<IContentHealth
             </DialogBody>
           </DialogSurface>
         </Dialog>
+
+        <Dialog open={!!this.state.isLibraryReportOpen} onOpenChange={(_: any, data: any) => this.setState({ isLibraryReportOpen: !!data.open })} modalType={'alert'}>
+          <DialogSurface>
+            <DialogBody>
+              <DialogTitle>Library report</DialogTitle>
+              <DialogContent style={{ padding: 12 }}>
+                {this.state.selectedLibrary ? (
+                  <div>
+                    <div><strong>Title:</strong> {this.state.selectedLibrary.Title || 'N/A'}</div>
+                    <div><strong>Template:</strong> {ListTemplateType[this.state.selectedLibrary.BaseTemplate] || 'N/A'}</div>
+                    <div><strong>Description:</strong> {this.state.selectedLibrary.Description || 'N/A'}</div>
+                    <div><strong>Item Count:</strong> {this.state.selectedLibrary.ItemCount}</div>
+                    <div><strong>Created:</strong> {new Date(this.state.selectedLibrary.Created).toLocaleDateString()}</div>
+                    <div><strong>Last Modified:</strong> {new Date(this.state.selectedLibrary.LastItemModifiedDate).toLocaleString()}</div>
+                    <div><strong>Last User Modified:</strong> {new Date(this.state.selectedLibrary.LastItemUserModifiedDate).toLocaleString()}</div>
+                    {this.state.selectedLibrary.LastItemDeletedDate && (
+                      <div><strong>Last Deleted:</strong> {new Date(this.state.selectedLibrary.LastItemDeletedDate).toLocaleString()}</div>
+                    )}
+                    <div><strong>Enable Versioning:</strong> {this.state.selectedLibrary.EnableVersioning ? 'Yes' : 'No'}</div>
+                    <div><strong>Enable Attachments:</strong> {this.state.selectedLibrary.EnableAttachments ? 'Yes' : 'No'}</div>
+                    <div><strong>Enable Folder Creation:</strong> {this.state.selectedLibrary.EnableFolderCreation ? 'Yes' : 'No'}</div>
+                    
+                    <div style={{ marginTop: 16 }}>
+                      <h4>Found Items</h4>
+                      {this.state.selectedLibrary.FoundItems && this.state.selectedLibrary.FoundItems.length > 0 ? (
+                        <div>
+                          <div><strong>Total items found:</strong> {this.state.selectedLibrary.FoundItems.length}</div>
+                          <div style={{ marginTop: 8, maxHeight: '300px' }}>
+                            <ListView                
+                              items={this.state.selectedLibrary.FoundItems}
+                              viewFields={this.viewFieldsFoundItems}
+                              compact={true}                
+                              selectionMode={SelectionMode.none}
+                            />
+                          </div>
+                        </div>
+                      ) : (
+                        <div style={{ padding: '16px', backgroundColor: '#f5f5f5', border: '1px solid #ddd', borderRadius: '4px', textAlign: 'center' }}>
+                          <p style={{ margin: 0, color: '#666' }}>Query the library for results</p>
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                ) : (
+                  <div>No library selected.</div>
+                )}
+              </DialogContent>
+              <DialogActions>
+                <Button appearance={'secondary'} onClick={() => this.setState({ isLibraryReportOpen: false })}>Close</Button>
+              </DialogActions>
+            </DialogBody>
+          </DialogSurface>
+        </Dialog>
       </section>
     );
   }
 
   public async componentDidMount(): Promise<void> {
     
+  }
+
+  private ShowLibraryReport():void
+  {
+    if (!this.state.selectedLibrary) {
+      return;
+    }
+    this.setState({ isLibraryReportOpen: true });
   }
 
   private ShowPageReport():void
@@ -283,7 +382,10 @@ export default class ContentHealthManager extends React.Component<IContentHealth
         listInfo.Id,
         this.state.dateStartDate!
       );
-      console.log(items);
+      listInfo.FoundItems = items;
+      this.setState({ 
+        libraryEntries: this.state.libraryEntries      
+      });   
     }
   }
 
@@ -315,6 +417,11 @@ export default class ContentHealthManager extends React.Component<IContentHealth
   private onListSelectionChanged = (items: any[]): void => {
     const selected = (items && items.length > 0) ? (items[0] as Page) : null;
     this.setState({ selectedPage: selected });
+  }
+
+  private onLibrarySelectionChanged = (items: any[]): void => {
+    const selected = (items && items.length > 0) ? (items[0] as ListInformation) : null;
+    this.setState({ selectedLibrary: selected });
   }
 
   private GetSelectedSite() : Site
