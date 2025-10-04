@@ -35,7 +35,7 @@ interface IContentHealthManagerState {
 export default class ContentHealthManager extends React.Component<IContentHealthManagerProps, IContentHealthManagerState> {
   // View fields for found items in library report dialog
   viewFieldsFoundItems: IViewField[] = [
-    { name: 'Id', displayName: 'ID', sorting: true, isResizable: true, minWidth: 80, linkPropertyName:'DefaultView.ServerRelativeUrl' },
+    { name: 'Id', displayName: 'ID', sorting: true, isResizable: true, minWidth: 80, linkPropertyName:'webUrl' },
     { name: 'Title', displayName: 'Title', sorting: true, isResizable: true, minWidth: 200 },
     { 
       name: 'Created', displayName: 'Created', sorting: true, isResizable: true, minWidth: 120,

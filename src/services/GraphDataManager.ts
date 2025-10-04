@@ -236,7 +236,11 @@ export class GraphDataManager {
         
         // The SharePoint REST API returns data in a 'd' property with 'results' array
         const items : MicrosoftGraphBeta.ListItem[] = data.d?.results || [];  
-        console.log(defaultUrl, items); 
+        items.forEach((item : MicrosoftGraphBeta.ListItem)=> {
+          console.log(item); 
+          item.webUrl = `${defaultUrl}${(item as any).Id}`
+        });
+        
         // todo: build url to item
         return items;
         
