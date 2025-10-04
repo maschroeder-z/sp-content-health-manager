@@ -35,7 +35,7 @@ interface IContentHealthManagerState {
 export default class ContentHealthManager extends React.Component<IContentHealthManagerProps, IContentHealthManagerState> {
   // View fields for found items in library report dialog
   viewFieldsFoundItems: IViewField[] = [
-    { name: 'Id', displayName: 'ID', sorting: true, isResizable: true, minWidth: 80 },
+    { name: 'Id', displayName: 'ID', sorting: true, isResizable: true, minWidth: 80, linkPropertyName:'DefaultView.ServerRelativeUrl' },
     { name: 'Title', displayName: 'Title', sorting: true, isResizable: true, minWidth: 200 },
     { 
       name: 'Created', displayName: 'Created', sorting: true, isResizable: true, minWidth: 120,
@@ -56,7 +56,7 @@ export default class ContentHealthManager extends React.Component<IContentHealth
 
   // BaseTemplate BaseType EnableAttachments EnableFolderCreation EnableVersioning ForceCheckout ItemCount LastItemModifiedDate LastItemUserModifiedDate
   viewFieldsLibs: IViewField[] = [
-    { name: 'Title', displayName: 'Title', sorting: true, isResizable: true, minWidth: 120, linkPropertyName:'webUrl' },
+    { name: 'Title', displayName: 'Title', sorting: true, isResizable: true, minWidth: 120, linkPropertyName:'DefaultView.ServerRelativeUrl'},
     { 
       name: 'BaseTemplate', displayName: 'Template', sorting: true, isResizable: true, minWidth: 100,
       render: (item:ListInformation, index, column) => {        
@@ -91,10 +91,10 @@ export default class ContentHealthManager extends React.Component<IContentHealth
         return <FieldDateRenderer text={date.toLocaleString()} />;
       }
     },
-    { name: 'ItemCount', displayName: 'Items', sorting: true, isResizable: true, minWidth: 120, linkPropertyName:'webUrl' },
-    { name: 'FoundItems', displayName: 'Found', sorting: true, isResizable: true, minWidth: 120, linkPropertyName:'webUrl',
-      render: (item:ListInformation, index, column) => {     
-        const entry = this.state.libraryEntries.filter(x=>x.Id === item.Id)[0];
+    { name: 'ItemCount', displayName: 'Items', sorting: true, isResizable: true, minWidth: 120 },
+    { name: 'FoundItems', displayName: 'Found', sorting: true, isResizable: true, minWidth: 120,
+      render: (item:ListInformation, index, column) => {             
+        const entry = this.GetLibraryEntryByIndex(item.Id);
         if (typeof entry.FoundItems !== "undefined" && entry.FoundItems !== null)
         {
           return <FieldTextRenderer text={`Found: ${entry.FoundItems?.length}`} />;
@@ -119,7 +119,7 @@ export default class ContentHealthManager extends React.Component<IContentHealth
       isLibraryReportOpen: false,
       selectedLibrary: null,
       viewFields: [
-        { name: 'title', displayName: 'Title', sorting: true, isResizable: true, minWidth: 120, linkPropertyName:'webUrl' },
+        { name: 'title', displayName: 'Title', sorting: true, isResizable: true, minWidth: 120 },
         { name: 'name', displayName: 'Name', sorting: true, isResizable: true, minWidth: 100 },
         { name: 'webUrl', displayName: 'URL', sorting: false, isResizable: true, minWidth: 200 },
         { name: 'InProgress', displayName: 'InProgress', sorting: false, isResizable: false, minWidth: 50,
@@ -131,9 +131,8 @@ export default class ContentHealthManager extends React.Component<IContentHealth
           }
         },        
         { name: 'Links', displayName: 'Links', sorting: false, isResizable: true, minWidth: 200,
-          render: (item, index, column) => {                        
-            const entry = this.state.pageResults.filter(x=>x.pageID === item.id)[0];
-            console.log(entry);
+          render: (item, index, column) => {                                    
+            const entry = this.state.pageResults.filter(x=>x.pageID === item.id)[0];            
             if (typeof entry !== "undefined")
             {
               return `Found ${entry.Links.length}. Broken links: ${entry.Links.filter(x=>x.IsBroken).length}`;
@@ -144,6 +143,11 @@ export default class ContentHealthManager extends React.Component<IContentHealth
       ],
       pageEntries: []
     };
+  }
+
+  private GetLibraryEntryByIndex(index: string):ListInformation
+  {    
+    return this.state.libraryEntries.filter(x=>x.Id === index)[0];
   }
 
   public render(): React.ReactElement<IContentHealthManagerProps> {
@@ -157,8 +161,7 @@ export default class ContentHealthManager extends React.Component<IContentHealth
           allowSearch={true}
           multiSelect={true}
           onChange={(sites) => {                
-            this.setState({ SelectedSites: sites as Site[] });
-            console.log(this.state.SelectedSites);         
+            this.setState({ SelectedSites: sites as Site[] });            
           }}
           placeholder={'Select sites'}
           searchPlaceholder={'Filter sites'} />
@@ -269,7 +272,7 @@ export default class ContentHealthManager extends React.Component<IContentHealth
                     <div><strong>Enable Folder Creation:</strong> {this.state.selectedLibrary.EnableFolderCreation ? 'Yes' : 'No'}</div>
                     
                     <div style={{ marginTop: 16 }}>
-                      <h4>Found Items</h4>
+                      <h4>Overview list entries</h4>
                       {this.state.selectedLibrary.FoundItems && this.state.selectedLibrary.FoundItems.length > 0 ? (
                         <div>
                           <div><strong>Total items found:</strong> {this.state.selectedLibrary.FoundItems.length}</div>
@@ -379,10 +382,11 @@ export default class ContentHealthManager extends React.Component<IContentHealth
     for (const listInfo of this.state.libraryEntries) {
       const items = await dataManager.Query4ItemByDate(
         site.url,
-        listInfo.Id,
+        listInfo.Id,        
+        listInfo.DefaultView.ServerRelativeUrl,
         this.state.dateStartDate!
       );
-      listInfo.FoundItems = items;
+      listInfo.FoundItems = items;            
       this.setState({ 
         libraryEntries: this.state.libraryEntries      
       });   
@@ -405,10 +409,9 @@ export default class ContentHealthManager extends React.Component<IContentHealth
     this.setState({ 
       libraryEntries: libraries      
     });*/
-    const siteInfo : Site = this.state.SelectedSites.filter(x=>x.id === data.optionValue)[0];
-    console.log(siteInfo);
-    const libraries = await dataManager.GetAllLists(siteInfo.url);
-    console.log(libraries);
+    const siteInfo : Site = this.state.SelectedSites.filter(x=>x.id === data.optionValue)[0];    
+    const libraries = await dataManager.GetAllLists(siteInfo.url);    
+    console.log("All lists", libraries);
     this.setState({ 
       libraryEntries: libraries      
     });    
@@ -421,7 +424,7 @@ export default class ContentHealthManager extends React.Component<IContentHealth
 
   private onLibrarySelectionChanged = (items: any[]): void => {
     const selected = (items && items.length > 0) ? (items[0] as ListInformation) : null;
-    this.setState({ selectedLibrary: selected });
+    this.setState({ selectedLibrary: this.GetLibraryEntryByIndex(selected!.Id) });
   }
 
   private GetSelectedSite() : Site

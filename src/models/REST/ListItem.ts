@@ -1,4 +1,4 @@
-export interface SPListItem {
+/*export interface SPListItem {
     __metadata: Metadata
     FirstUniqueAncestorSecurableObject: FirstUniqueAncestorSecurableObject
     RoleAssignments: RoleAssignments
@@ -195,4 +195,4 @@ export interface SPListItem {
   
   export interface Versions2 {
     __deferred: LazyLoadInfo
-  }
+  }*/

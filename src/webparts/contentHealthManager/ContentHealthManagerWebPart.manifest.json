@@ -18,8 +18,8 @@
   "preconfiguredEntries": [{
     "groupId": "5c03119e-3074-46fd-976b-c60198311f70", // Advanced
     "group": { "default": "Advanced" },
-    "title": { "default": "ContentHealthManager" },
-    "description": { "default": "ContentHealthManager description" },
+    "title": { "default": "Content Health Manager" },
+    "description": { "default": "Prepare your content to be more consistence and to be ready for AI and search processing." },
     "officeFabricIconFontName": "Page",
     "properties": {
       "description": "ContentHealthManager"

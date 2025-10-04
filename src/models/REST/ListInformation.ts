@@ -1,5 +1,6 @@
+import { ListItem } from "@microsoft/microsoft-graph-types-beta";
 import { ListTemplateType } from "../../Core/ListTemplateTypes";
-import { SPListItem } from "./ListItem";
+import { SPView } from "./SPView";
 
 export interface ListInformation {
     AllowContentTypes: boolean;
@@ -8,6 +9,7 @@ export interface ListInformation {
     ContentTypesEnabled: boolean;
     CrawlNonDefaultViews: boolean;
     Created: string;
+    DefaultView: SPView,
     CurrentChangeToken: any; // SP.ChangeToken
     DefaultContentApprovalWorkflowId: string; // Guid
     DefaultItemOpenUseListSetting: boolean;
@@ -56,5 +58,5 @@ export interface ListInformation {
     ServerTemplateCanCreateFolders: boolean;
     TemplateFeatureId: string; // Guid
     Title?: string;    
-    FoundItems?: SPListItem[] //https://blog.aterentiev.com/using-pnp-field-controls-in-pnp
+    FoundItems?: ListItem[] //https://blog.aterentiev.com/using-pnp-field-controls-in-pnp
   }

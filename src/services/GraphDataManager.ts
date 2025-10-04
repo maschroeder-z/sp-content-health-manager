@@ -4,7 +4,6 @@ import type { ListInformation } from '../models/REST/ListInformation';
 
 //import * as MicrosoftGraph from "@microsoft/microsoft-graph-types-beta"; //[MicrosoftGraph.SitePage]
 import * as MicrosoftGraphBeta from "@microsoft/microsoft-graph-types-beta"
-import { SPListItem } from '../models/REST/ListItem';
 
 export class GraphDataManager {
   private readonly graphClientPromise: Promise<MSGraphClientV3>;
@@ -12,7 +11,7 @@ export class GraphDataManager {
 
   constructor(msGraphClientFactory: MSGraphClientFactory, spHttpClient: SPHttpClient) {
     this.graphClientPromise = msGraphClientFactory.getClient('3');
-    this.spHTTPClient = spHttpClient;
+    this.spHTTPClient = spHttpClient;    
   }
 
 
@@ -101,9 +100,9 @@ export class GraphDataManager {
   }
 
   public async GetAllLists(siteUrl: string): Promise<ListInformation[]> {
-    try {
+    try {      
       // Ensure the siteUrl has proper format and add the REST API endpoint
-      const apiUrl = `${siteUrl}/_api/web/lists`;
+      const apiUrl = `${siteUrl}/_api/web/lists?$expand=DefaultView`;
       
       const response = await fetch(apiUrl, {
         method: 'GET',
@@ -171,12 +170,13 @@ export class GraphDataManager {
         MajorWithMinorVersionsLimit: list.MajorWithMinorVersionsLimit,
         MultipleDataList: list.MultipleDataList,
         NoCrawl: list.NoCrawl,
-        ParentWebPath: list.ParentWebPath,
-        ParentWebUrl: list.ParentWebUrl,
+        ParentWebPath: list.ParentWebPath,        
         ParserDisabled: list.ParserDisabled,
         ServerTemplateCanCreateFolders: list.ServerTemplateCanCreateFolders,
         TemplateFeatureId: list.TemplateFeatureId,
-        Title: list.Title        
+        Title: list.Title,    
+        DefaultView: list.DefaultView,            
+        ParentWebUrl: list.ParentWebUrl+"/"+list.EntityTypeName
       }));
     } catch (error) {
       console.error('Error fetching lists:', error);
@@ -188,91 +188,64 @@ export class GraphDataManager {
  * Queries list items by date using SharePoint REST API
  * Endpoint: /[siteUrl]/_api/web/lists('[listID]')/GetItems(query=@v1)?@v1={'ViewXml':'<View><Query><Where><Leq><FieldRef Name=Modified/><Value Type=DateTime>[dateStart]</Value></Leq></Where></Query></View>'}&$expand=file
  */
-  public async Query4ItemByDate(siteUrl: string, listID: string, dateStart: Date): Promise<SPListItem[]> {
-    try {
-      // Format the date for SharePoint CAML query (ISO format)
-      const formattedDate = dateStart.toISOString();
-      
-      // Construct the ViewXml query
-      const viewXml = `<View><Query><Where><Leq><FieldRef Name=Modified/><Value Type=DateTime>${formattedDate}</Value></Leq></Where></Query></View>`;
-      
-      const options: ISPHttpClientOptions = {
-        headers: {
-          'odata-version':'3.0',
-          'Accept': 'application/json;odata=verbose',
-          'Content-Type': 'application/json'          
-        },
-        body: `{'query': {          
-          'ViewXml':'${viewXml}'
-        }}`
-      };
+  public async Query4ItemByDate(siteUrl: string, listID: string, defaultUrl: string, dateStart: Date): Promise<MicrosoftGraphBeta.ListItem[]> {
+    if (typeof defaultUrl !== "undefined")
+    {
+      try {
+        // Format the date for SharePoint CAML query (ISO format)
+        const formattedDate = dateStart.toISOString();
+        // /sites/Demo02/Freigegebene Dokumente/Forms/AllItems.aspx /sites/Demo02/FormServerTemplates/Forms/All Forms.aspx
+        const temp = defaultUrl.split("/")
+        temp.pop();
+        temp.push("ViewForm.aspx?id=");
+        defaultUrl = temp.join("/");
+        
+        // Construct the ViewXml query
+        const viewXml = `<View><Query><Where><Leq><FieldRef Name=Modified/><Value Type=DateTime>${formattedDate}</Value></Leq></Where></Query></View>`;
+        
+        const options: ISPHttpClientOptions = {
+          headers: {
+            'odata-version':'3.0',
+            'Accept': 'application/json;odata=verbose',
+            'Content-Type': 'application/json'          
+          },
+          body: `{'query': {          
+            'ViewXml':'${viewXml}'
+          }}`
+        };
 
-      // Encode the query parameter
-      //const queryParam = encodeURIComponent(`{'ViewXml':'${viewXml}'}`);
-      //const queryParam = `{'ViewXml':'${viewXml}'}`;
-      
-      // Construct the API URL
-1     //const apiUrl = `${siteUrl}/_api/web/lists('${listID}')/GetItems(query=@v1)?@v1=${queryParam}&$expand=file`;
-      const apiUrl = `${siteUrl}/_api/web/lists('${listID}')/GetItems?$expand=file`;
-      
-      const response = await this.spHTTPClient.post(
-        apiUrl,
-        SPHttpClient.configurations.v1,
-        options
-      );
+        // Encode the query parameter
+        //const queryParam = encodeURIComponent(`{'ViewXml':'${viewXml}'}`);
+        //const queryParam = `{'ViewXml':'${viewXml}'}`;
+        
+        // Construct the API URL
+  1     //const apiUrl = `${siteUrl}/_api/web/lists('${listID}')/GetItems(query=@v1)?@v1=${queryParam}&$expand=file`;
+        const apiUrl = `${siteUrl}/_api/web/lists('${listID}')/GetItems?$expand=ParentList,File`;
+        
+        const response = await this.spHTTPClient.post(
+          apiUrl,
+          SPHttpClient.configurations.v1,
+          options
+        );
 
-      if (!response.ok) {
-        throw new Error(`HTTP error! status: ${response.status}`);
+        if (!response.ok) {
+          throw new Error(`HTTP error! status: ${response.status}`);
+        }
+
+        const data = await response.json();
+        
+        // The SharePoint REST API returns data in a 'd' property with 'results' array
+        const items : MicrosoftGraphBeta.ListItem[] = data.d?.results || [];  
+        console.log(defaultUrl, items); 
+        // todo: build url to item
+        return items;
+        
+      } catch (error) {
+        console.error('Error querying items by date:', error);
+        throw error;
       }
-
-      const data = await response.json();
-      
-      // The SharePoint REST API returns data in a 'd' property with 'results' array
-      const items = data.d?.results || [];
-      
-      return items.map((item: any): SPListItem => ({
-        __metadata: item.__metadata,
-        FirstUniqueAncestorSecurableObject: item.FirstUniqueAncestorSecurableObject,
-        RoleAssignments: item.RoleAssignments,
-        AttachmentFiles: item.AttachmentFiles,
-        ContentType: item.ContentType,
-        GetDlpPolicyTip: item.GetDlpPolicyTip,
-        FieldValuesAsHtml: item.FieldValuesAsHtml,
-        FieldValuesAsText: item.FieldValuesAsText,
-        FieldValuesForEdit: item.FieldValuesForEdit,
-        File: item.File,
-        Folder: item.Folder,
-        LikedByInformation: item.LikedByInformation,
-        ParentList: item.ParentList,
-        Properties: item.Properties,
-        Versions: item.Versions,
-        FileSystemObjectType: item.FileSystemObjectType,
-        Id: item.Id,
-        ServerRedirectedEmbedUri: item.ServerRedirectedEmbedUri,
-        ServerRedirectedEmbedUrl: item.ServerRedirectedEmbedUrl,
-        ContentTypeId: item.ContentTypeId,
-        OData__ColorTag: item.OData__ColorTag,
-        ComplianceAssetId: item.ComplianceAssetId,
-        Title: item.Title,
-        Antragsart: item.Antragsart,
-        Gesch_x00e4_ftsfeld: item.Gesch_x00e4_ftsfeld,
-        Tags: item.Tags,
-        Description: item.Description,
-        Categories: item.Categories,
-        ID: item.ID,
-        Created: item.Created,
-        AuthorId: item.AuthorId,
-        Modified: item.Modified,
-        EditorId: item.EditorId,
-        OData__CopySource: item.OData__CopySource,
-        CheckoutUserId: item.CheckoutUserId,
-        OData__UIVersionString: item.OData__UIVersionString,
-        GUID: item.GUID        
-      }));
-    } catch (error) {
-      console.error('Error querying items by date:', error);
-      throw error;
     }
+    return [];
   }
 
 }
