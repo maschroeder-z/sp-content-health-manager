@@ -424,7 +424,10 @@ export default class ContentHealthManager extends React.Component<IContentHealth
 
   private onLibrarySelectionChanged = (items: any[]): void => {
     const selected = (items && items.length > 0) ? (items[0] as ListInformation) : null;
-    this.setState({ selectedLibrary: this.GetLibraryEntryByIndex(selected!.Id) });
+    if (selected !== null)
+      this.setState({ selectedLibrary: this.GetLibraryEntryByIndex(selected!.Id) });
+    else
+    this.setState({ selectedLibrary: null });
   }
 
   private GetSelectedSite() : Site

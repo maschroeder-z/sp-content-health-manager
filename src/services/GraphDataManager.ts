@@ -195,11 +195,14 @@ export class GraphDataManager {
         // Format the date for SharePoint CAML query (ISO format)
         const formattedDate = dateStart.toISOString();
         // /sites/Demo02/Freigegebene Dokumente/Forms/AllItems.aspx /sites/Demo02/FormServerTemplates/Forms/All Forms.aspx
-        const temp = defaultUrl.split("/")
+        /*const temp = defaultUrl.split("/")
         temp.pop();
-        temp.push("ViewForm.aspx?id=");
-        defaultUrl = temp.join("/");
+        //temp.push("ViewForm.aspx?id=");
+        temp.push("_layouts/15/listform.aspx?PageType=4&ListId=");
+        defaultUrl = temp.join("/");*/
         
+        defaultUrl = siteUrl + "/_layouts/15/listform.aspx?PageType=4&ListId=";
+
         // Construct the ViewXml query
         const viewXml = `<View><Query><Where><Leq><FieldRef Name=Modified/><Value Type=DateTime>${formattedDate}</Value></Leq></Where></Query></View>`;
         
@@ -237,11 +240,11 @@ export class GraphDataManager {
         // The SharePoint REST API returns data in a 'd' property with 'results' array
         const items : MicrosoftGraphBeta.ListItem[] = data.d?.results || [];  
         items.forEach((item : MicrosoftGraphBeta.ListItem)=> {
-          console.log(item); 
-          item.webUrl = `${defaultUrl}${(item as any).Id}`
-        });
-        
-        // todo: build url to item
+          // https://[Your SharePoint SiteURL]/_layouts/15/listform.aspx?PageType=[Type]&ListId=[ListGUID]&ID=[Item ID]
+          console.log(item);
+          item.webUrl = `${defaultUrl}${(item as any).ParentList.Id}&id=${(item as any).Id}`;
+          //item.webUrl = `/_layouts/15/listform.aspx?PageType=4&ListId=${(item as any).GUID}`
+        });                
         return items;
         
       } catch (error) {
