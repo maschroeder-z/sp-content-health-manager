@@ -200,7 +200,7 @@ export class GraphDataManager {
         //temp.push("ViewForm.aspx?id=");
         temp.push("_layouts/15/listform.aspx?PageType=4&ListId=");
         defaultUrl = temp.join("/");*/
-        
+        //https://plumsail.com/docs/forms-sp/how-to/link-to-form.html
         defaultUrl = siteUrl + "/_layouts/15/listform.aspx?PageType=4&ListId=";
 
         // Construct the ViewXml query

@@ -166,10 +166,10 @@ export default class ContentHealthManager extends React.Component<IContentHealth
           placeholder={'Select sites'}
           searchPlaceholder={'Filter sites'} />
 
-        <div className={'ms-Grid'}>
-          <div className={'ms-Grid-row'}>
-            <div className={'ms-Grid-col ms-sm12 ms-md4 ms-lg3'}>
-              <p>TODO</p>
+        <div>
+
+          <div className={styles.row}>            
+            <div className={styles['col-sm6']}>              
               <label htmlFor={'ddCurrentSite'}>Site selection</label>
               <Dropdown 
                 id={'ddCurrentSite'} 
@@ -181,11 +181,16 @@ export default class ContentHealthManager extends React.Component<IContentHealth
                     {entry.title}
                   </Option>
                 ))}
-              </Dropdown>
+              </Dropdown>              
+            </div>
+            <div className={styles['col-sm6']}> 
               <Button onClick={() => this.StartBrokenLinkProcess()}>Find Broken Links</Button>
               <Button onClick={() => this.ShowPageReport()}>Open details</Button>
             </div>
-            <div className={'ms-Grid-col ms-sm12 ms-md8 ms-lg9'}>
+          </div>
+
+          <div className={'ms-Grid-row'}>
+            <div className={'ms-Grid-col ms-sm12'}>
               <h3>Page library</h3>
               <ListView                
                 items={this.state.pageEntries}
