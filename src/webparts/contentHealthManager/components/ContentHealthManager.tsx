@@ -5,7 +5,7 @@ import { ListView, type IViewField } from '@pnp/spfx-controls-react/lib/ListView
 import { DatePicker, SelectionMode } from '@fluentui/react';
 import { SitePicker } from "@pnp/spfx-controls-react/lib/SitePicker";
 import type { Site } from '../../../models/Site';
-import { Button, Dropdown, Option, Dialog, DialogSurface, DialogBody, DialogTitle, DialogContent, DialogActions, Field } from '@fluentui/react-components';
+import { Button, Dropdown, Option, Dialog, DialogSurface, DialogBody, DialogTitle, DialogContent, DialogActions, Field, TabList, Tab, TabValue } from '@fluentui/react-components';
 import GraphDataManager from '../../../services/GraphDataManager';
 import { PageProcessing } from '../../../Core/PageProcessing';
 import { Page } from '../../../models/Page';
@@ -30,6 +30,7 @@ interface IContentHealthManagerState {
   dateStartDate: Date | null | undefined;
   isLibraryReportOpen?: boolean;
   selectedLibrary?: ListInformation | null;
+  selectedTabValue: TabValue;
 }
 
 export default class ContentHealthManager extends React.Component<IContentHealthManagerProps, IContentHealthManagerState> {
@@ -118,6 +119,7 @@ export default class ContentHealthManager extends React.Component<IContentHealth
       selectedPage: null,
       isLibraryReportOpen: false,
       selectedLibrary: null,
+      selectedTabValue: 'tab1',
       viewFields: [
         { name: 'title', displayName: 'Title', sorting: true, isResizable: true, minWidth: 120 },
         { name: 'name', displayName: 'Name', sorting: true, isResizable: true, minWidth: 100 },
@@ -149,7 +151,7 @@ export default class ContentHealthManager extends React.Component<IContentHealth
   {    
     return this.state.libraryEntries.filter(x=>x.Id === index)[0];
   }
-
+/**https://storybooks.fluentui.dev/react/?path=/docs/components-tablist--docs*/
   public render(): React.ReactElement<IContentHealthManagerProps> {
     return (
       <section className={styles.contentHealthManager}>
@@ -165,8 +167,6 @@ export default class ContentHealthManager extends React.Component<IContentHealth
           }}
           placeholder={'Select sites'}
           searchPlaceholder={'Filter sites'} />
-
-        <div>
 
           <div className={styles.row}>            
             <div className={styles['col-sm6']}>              
@@ -184,44 +184,55 @@ export default class ContentHealthManager extends React.Component<IContentHealth
               </Dropdown>              
             </div>
             <div className={styles['col-sm6']}> 
-              <Button onClick={() => this.StartBrokenLinkProcess()}>Find Broken Links</Button>
-              <Button onClick={() => this.ShowPageReport()}>Open details</Button>
+              
             </div>
           </div>
 
-          <div className={'ms-Grid-row'}>
-            <div className={'ms-Grid-col ms-sm12'}>
+        <TabList selectedValue={this.state.selectedTabValue} onTabSelect={this.onTabSelect}>
+          <Tab value="tab1">Broken Links Analysis</Tab>
+          <Tab value="tab2">Library Analysis</Tab>
+        </TabList>
+
+        {this.state.selectedTabValue === 'tab2' && (
+          <div id="Register1" className={styles.row}>
+            <h3>Site libraries & lists</h3>
+            <Field label="Select a date">
+              <DatePicker 
+                value={new Date()}
+                minDate={new Date(2000,0,1)}
+                maxDate={new Date()}
+                placeholder="Select a query date..." 
+                onSelectDate={(selectedDate:Date|null) => this.setState(
+                  {dateStartDate: selectedDate}
+                )}
+              />
+            </Field>
+            <Button onClick={() => this.StartQueryLstAndLibraries()}>Find old data</Button>
+            <Button onClick={() => this.ShowLibraryReport()}>Show details</Button>
+            <ListView                
+              items={this.state.libraryEntries}
+              viewFields={this.viewFieldsLibs}
+              compact={true}                
+              selectionMode={SelectionMode.single}
+              selection={this.onLibrarySelectionChanged} />
+          </div>
+        )}
+
+        {this.state.selectedTabValue === 'tab1' && (
+          <div id="Register2" className={styles.row}>
+            <div className={styles['col-sm12']}>
               <h3>Page library</h3>
+              <Button onClick={() => this.StartBrokenLinkProcess()}>Find Broken Links</Button>
+              <Button onClick={() => this.ShowPageReport()}>Open details</Button>
               <ListView                
                 items={this.state.pageEntries}
                 viewFields={this.state.viewFields}
                 compact={true}                
                 selectionMode={SelectionMode.single}
-                selection={this.onListSelectionChanged}/>
-              <h3>Site libraries & lists</h3>
-              <Field label="Select a date">
-                <DatePicker 
-                  value={new Date()}
-                  minDate={new Date(2000,0,1)}
-                  maxDate={new Date()}
-                  placeholder="Select a query date..." 
-                  onSelectDate={(selectedDate:Date|null) => this.setState(
-                    {dateStartDate: selectedDate}
-                  )}
-                />
-              </Field>
-              <Button onClick={() => this.StartQueryLstAndLibraries()}>Find old data</Button>
-              <Button onClick={() => this.ShowLibraryReport()}>Show details</Button>
-              <ListView                
-                items={this.state.libraryEntries}
-                viewFields={this.viewFieldsLibs}
-                compact={true}                
-                selectionMode={SelectionMode.single}
-                selection={this.onLibrarySelectionChanged}
-              />
+                selection={this.onListSelectionChanged}/>              
             </div>            
           </div>
-        </div>                
+        )}                
         <Dialog open={!!this.state.isReportOpen} onOpenChange={(_: any, data: any) => this.setState({ isReportOpen: !!data.open })} modalType={'alert'}>
           <DialogSurface>
             <DialogBody>
@@ -438,5 +449,9 @@ export default class ContentHealthManager extends React.Component<IContentHealth
   private GetSelectedSite() : Site
   {
     return this.state.SelectedSites.filter(x=>x.id === this.state.selectedSiteId)[0] as Site;
+  }
+
+  private onTabSelect = (event: any, data: { value: TabValue }): void => {
+    this.setState({ selectedTabValue: data.value });
   }
 }

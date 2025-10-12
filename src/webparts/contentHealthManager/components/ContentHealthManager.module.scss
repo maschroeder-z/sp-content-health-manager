@@ -1,4 +1,6 @@
-/*@import '~@fluentui/react/dist/sass/References.scss';*/
+/*@import '~@fluentui/react/dist/sass/References.scss';
+https://learn.microsoft.com/en-us/sharepoint/dev/spfx/office-ui-fabric-integration
+*/
 @import '~@microsoft/sp-office-ui-fabric-core/dist/sass/SPFabricCore.scss';
 
 
@@ -22,6 +24,11 @@
 .col-sm6 {
   @include ms-Grid-col;
   @include ms-sm6;
+}
+
+.col-sm12 {
+  @include ms-Grid-col;
+  @include ms-sm12;
 }
 
 .contentHealthManager {
