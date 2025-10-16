@@ -5,15 +5,18 @@ https://learn.microsoft.com/en-us/sharepoint/dev/spfx/office-ui-fabric-integrati
 
 
 .row {
-  @include ms-Grid-row;
-  @include ms-fontColor-white;
-  background-color: $ms-color-themeDark;
-  padding: 20px;
+  @include ms-Grid-row;  
+  padding: 0px;
 }
 
 .col-sm7 {
   @include ms-Grid-col;
   @include ms-sm7;
+}
+
+.col-sm4 {
+  @include ms-Grid-col;
+  @include ms-sm4;
 }
 
 .col-sm5 {
@@ -26,10 +29,30 @@ https://learn.microsoft.com/en-us/sharepoint/dev/spfx/office-ui-fabric-integrati
   @include ms-sm6;
 }
 
+.col-sm7 {
+  @include ms-Grid-col;
+  @include ms-sm7;
+}
+
+
+.col-sm8 {
+  @include ms-Grid-col;
+  @include ms-sm8;
+}
+
 .col-sm12 {
   @include ms-Grid-col;
   @include ms-sm12;
 }
+
+.libraryCommands {
+  padding: 8px 0 0 20px;
+}
+
+.libraryCommandsLeft {
+  text-align: right;
+}
+
 
 .contentHealthManager {
   overflow: hidden;

@@ -27,7 +27,7 @@ interface IContentHealthManagerState {
   pageResults: PageResult[];  
   isReportOpen?: boolean;
   selectedPage?: Page | null;
-  dateStartDate: Date | null | undefined;
+  dateStartDate: Date |  undefined;
   isLibraryReportOpen?: boolean;
   selectedLibrary?: ListInformation | null;
   selectedTabValue: TabValue;
@@ -119,7 +119,7 @@ export default class ContentHealthManager extends React.Component<IContentHealth
       selectedPage: null,
       isLibraryReportOpen: false,
       selectedLibrary: null,
-      selectedTabValue: 'tab1',
+      selectedTabValue: null,
       viewFields: [
         { name: 'title', displayName: 'Title', sorting: true, isResizable: true, minWidth: 120 },
         { name: 'name', displayName: 'Name', sorting: true, isResizable: true, minWidth: 100 },
@@ -155,22 +155,23 @@ export default class ContentHealthManager extends React.Component<IContentHealth
   public render(): React.ReactElement<IContentHealthManagerProps> {
     return (
       <section className={styles.contentHealthManager}>
-        
-        <SitePicker
-          context={this.props.wpContext}
-          label={'Select sites'}
-          mode={'site'}
-          allowSearch={true}
-          multiSelect={true}
-          onChange={(sites) => {                
-            this.setState({ SelectedSites: sites as Site[] });            
-          }}
-          placeholder={'Select sites'}
-          searchPlaceholder={'Filter sites'} />
-
-          <div className={styles.row}>            
-            <div className={styles['col-sm6']}>              
-              <label htmlFor={'ddCurrentSite'}>Site selection</label>
+        <div className={styles.row}>
+          <div className={styles['col-sm6']}>
+            <Field label="Select sites">
+              <SitePicker
+                context={this.props.wpContext}              
+                mode={'site'}
+                allowSearch={true}
+                multiSelect={true}
+                onChange={(sites) => {                
+                  this.setState({ SelectedSites: sites as Site[] });            
+                }}
+                placeholder={'Select sites'}
+                searchPlaceholder={'Filter sites'} />
+              </Field>
+          </div>
+          <div className={styles['col-sm6']}>
+            <Field label="Choose a Site">
               <Dropdown 
                 id={'ddCurrentSite'} 
                 inlinePopup={true}                 
@@ -181,34 +182,39 @@ export default class ContentHealthManager extends React.Component<IContentHealth
                     {entry.title}
                   </Option>
                 ))}
-              </Dropdown>              
-            </div>
-            <div className={styles['col-sm6']}> 
-              
-            </div>
+              </Dropdown>     
+            </Field>  
           </div>
+        </div>
 
-        <TabList selectedValue={this.state.selectedTabValue} onTabSelect={this.onTabSelect}>
+
+        {this.state.selectedSiteId && <TabList selectedValue={this.state.selectedTabValue} onTabSelect={this.onTabSelect}>
           <Tab value="tab1">Broken Links Analysis</Tab>
           <Tab value="tab2">Library Analysis</Tab>
-        </TabList>
+        </TabList> }
 
         {this.state.selectedTabValue === 'tab2' && (
-          <div id="Register1" className={styles.row}>
-            <h3>Site libraries & lists</h3>
-            <Field label="Select a date">
-              <DatePicker 
-                value={new Date()}
-                minDate={new Date(2000,0,1)}
-                maxDate={new Date()}
-                placeholder="Select a query date..." 
-                onSelectDate={(selectedDate:Date|null) => this.setState(
-                  {dateStartDate: selectedDate}
-                )}
-              />
-            </Field>
-            <Button onClick={() => this.StartQueryLstAndLibraries()}>Find old data</Button>
-            <Button onClick={() => this.ShowLibraryReport()}>Show details</Button>
+          <div id="Register1" className={styles.row}>            
+            <div className={`${styles.row} ${styles.libraryCommands}`}> 
+              <div className={styles['col-sm5']}>    
+                <Field label="Select a date" orientation="horizontal" >
+                  <DatePicker 
+                    value={this.state.dateStartDate}
+                    minDate={new Date(2000,0,1)}
+                    maxDate={new Date()}
+                    placeholder="Select a query date..." 
+                    onSelectDate={(selectedDate:Date|undefined) => this.setState(
+                      {dateStartDate: selectedDate}
+                    )}
+                  />
+                </Field>
+              </div>
+              <div className={`${styles['col-sm7']} ${styles.libraryCommandsLeft}`}>    
+                <Button onClick={() => this.StartQueryLstAndLibraries()}>Find old data</Button>
+                &nbsp;
+                <Button onClick={() => this.ShowLibraryReport()}>Show details</Button>
+              </div>
+            </div>
             <ListView                
               items={this.state.libraryEntries}
               viewFields={this.viewFieldsLibs}
@@ -220,19 +226,26 @@ export default class ContentHealthManager extends React.Component<IContentHealth
 
         {this.state.selectedTabValue === 'tab1' && (
           <div id="Register2" className={styles.row}>
-            <div className={styles['col-sm12']}>
-              <h3>Page library</h3>
+          <div className={`${styles.row} ${styles.libraryCommands}`}> 
+            <div className={`${styles['col-sm12']} ${styles.libraryCommandsLeft}`}>              
               <Button onClick={() => this.StartBrokenLinkProcess()}>Find Broken Links</Button>
+              &nbsp;
               <Button onClick={() => this.ShowPageReport()}>Open details</Button>
-              <ListView                
-                items={this.state.pageEntries}
-                viewFields={this.state.viewFields}
-                compact={true}                
-                selectionMode={SelectionMode.single}
-                selection={this.onListSelectionChanged}/>              
-            </div>            
+            </div>
+          </div>
+          <ListView                
+            items={this.state.pageEntries}
+            viewFields={this.state.viewFields}
+            compact={true}                
+            selectionMode={SelectionMode.single}
+            selection={this.onListSelectionChanged}/>              
           </div>
         )}                
+        
+        {this.state.selectedSiteId === null && <div>
+            <p>Select a site to process</p>
+          </div>}
+        
         <Dialog open={!!this.state.isReportOpen} onOpenChange={(_: any, data: any) => this.setState({ isReportOpen: !!data.open })} modalType={'alert'}>
           <DialogSurface>
             <DialogBody>
@@ -249,6 +262,44 @@ export default class ContentHealthManager extends React.Component<IContentHealth
                           <div style={{ marginTop: 8 }}>
                             <div><strong>Total links:</strong> {entry.Links.length}</div>
                             <div><strong>Broken links:</strong> {entry.Links.filter((l: LinkInfo) => l.IsBroken).length}</div>
+                            <div style={{ marginTop: 12 }}>
+                              <div><strong>All Links:</strong></div>
+                              <div style={{ maxHeight: '300px', overflowY: 'auto', marginTop: 8, border: '1px solid #ccc', padding: 8 }}>
+                                {entry.Links.length > 0 ? (
+                                  entry.Links.map((link: LinkInfo, index: number) => (
+                                    <div key={index} style={{ 
+                                      padding: '8px', 
+                                      marginBottom: '4px', 
+                                      border: '1px solid #e0e0e0', 
+                                      borderRadius: '4px',
+                                      backgroundColor: link.IsBroken ? '#ffebee' : '#f5f5f5'
+                                    }}>
+                                      <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                                        <span style={{ 
+                                          color: link.IsBroken ? '#d32f2f' : '#2e7d32', 
+                                          fontWeight: 'bold',
+                                          fontSize: '12px'
+                                        }}>
+                                          {link.IsBroken ? '❌ BROKEN' : '✅ OK'}
+                                        </span>
+                                      </div>
+                                      <div style={{ marginTop: '4px' }}>
+                                        <div><strong>Title:</strong> {link.title || 'No title'}</div>
+                                        <div><strong>URL:</strong> 
+                                          <a href={link.url} target="_blank" rel="noopener noreferrer" style={{ marginLeft: '4px', color: '#0078d4' }}>
+                                            {link.url}
+                                          </a>
+                                        </div>
+                                      </div>
+                                    </div>
+                                  ))
+                                ) : (
+                                  <div style={{ padding: '8px', color: '#666', fontStyle: 'italic' }}>
+                                    No links found on this page.
+                                  </div>
+                                )}
+                              </div>
+                            </div>
                           </div>
                         );
                       }
@@ -417,14 +468,10 @@ export default class ContentHealthManager extends React.Component<IContentHealth
     const dataManager = new GraphDataManager(this.props.msGraphClientFactory, this.props.spHTTPClient);
     const pages = await dataManager.GetPages4Site(data.optionValue);
     this.setState({ 
+      selectedTabValue: this.state.selectedTabValue === null ? "tab1":this.state.selectedTabValue,
       pageEntries: pages,
       selectedSiteId: data.optionValue
     });
-    /*const libraries = await dataManager.GetLibraries(data.optionValue);
-    console.log(libraries);
-    this.setState({ 
-      libraryEntries: libraries      
-    });*/
     const siteInfo : Site = this.state.SelectedSites.filter(x=>x.id === data.optionValue)[0];    
     const libraries = await dataManager.GetAllLists(siteInfo.url);    
     console.log("All lists", libraries);

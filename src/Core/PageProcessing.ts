@@ -16,22 +16,17 @@ export class PageProcessing
         for (const section of canvas.horizontalSections || []) {
             for (const column of section.columns || []) {
                 for (const webpart of column.webparts || []) {
-                    //const data = webpart?.data;
-                    //const properties = data?.properties;
-                    // eslint-disable-next-line no-console
-                    //console.log('WebPart properties:', properties);
-                    //console.log(webpart["@odata.type"]);
-                    //console.log(webpart.webPartType);
                     if (webpart.innerHtml && typeof webpart.innerHtml === 'string' && webpart.innerHtml.trim().length > 0) {
                         links=links.concat(this.ExtractLinksFromContent(webpart.innerHtml));
                     }
                     if (typeof webpart.data !== "undefined" && webpart.data !== null)
-                    {                        
-                        for (const link of webpart.data?.serverProcessedContent.links!) {
-                            console.log(link);
+                    {   
+                        const propTitle = (webpart.data.properties as any).Titel !== "undefined" ? (webpart.data.properties as any).Titel : ((webpart.data.properties as any).Title !== "undefined" ? (webpart.data.properties as any).Title : "-");
+                        console.log(webpart.data,webpart.data?.serverProcessedContent.links);
+                        for (const link of webpart.data?.serverProcessedContent.links!) {                            
                             links.push({
                                 IsBroken: false,
-                                title: link.key,
+                                title: `${webpart.data.title} / (${propTitle}) -> ${link.key}`,
                                 url: link.value
                             });                            
                         }
