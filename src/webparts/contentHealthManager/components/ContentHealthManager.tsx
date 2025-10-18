@@ -2,7 +2,7 @@ import * as React from 'react';
 import styles from './ContentHealthManager.module.scss';
 import type { IContentHealthManagerProps } from './IContentHealthManagerProps';
 import { ListView, type IViewField } from '@pnp/spfx-controls-react/lib/ListView';
-import { DatePicker, SelectionMode } from '@fluentui/react';
+import { Checkbox, DatePicker, SelectionMode } from '@fluentui/react';
 import { SitePicker } from "@pnp/spfx-controls-react/lib/SitePicker";
 import type { Site } from '../../../models/Site';
 import { Button, Dropdown, Option, Dialog, DialogSurface, DialogBody, DialogTitle, DialogContent, DialogActions, Field, TabList, Tab, TabValue } from '@fluentui/react-components';
@@ -11,15 +11,13 @@ import { PageProcessing } from '../../../Core/PageProcessing';
 import { Page } from '../../../models/Page';
 import { PageResult } from '../../../models/PageResult';
 import type { LinkInfo } from '../../../models/LinkInfo';
-import { SendRegular } from "@fluentui/react-icons";
+import { CheckmarkCircleColor, CheckmarkCircleHintRegular, WarningColor } from "@fluentui/react-icons";
 import { ListInformation } from '../../../models/REST/ListInformation';
 import { FieldDateRenderer,FieldTextRenderer } from '@pnp/spfx-controls-react';
 import { ListTemplateType } from '../../../Core/ListTemplateTypes';
 //import * as MicrosoftGraphBeta from "@microsoft/microsoft-graph-types-beta"
 
-interface IContentHealthManagerState {  
-  viewFields: IViewField[];
-  //libraryEntries: MicrosoftGraphBeta.List[];
+interface IContentHealthManagerState {      
   libraryEntries: ListInformation[];
   pageEntries: Page[];
   SelectedSites: Site[];
@@ -31,9 +29,12 @@ interface IContentHealthManagerState {
   isLibraryReportOpen?: boolean;
   selectedLibrary?: ListInformation | null;
   selectedTabValue: TabValue;
+  chkShowLists: boolean;
+  chkShowLibaries: boolean;
 }
 
 export default class ContentHealthManager extends React.Component<IContentHealthManagerProps, IContentHealthManagerState> {
+  dataManager: GraphDataManager;
   // View fields for found items in library report dialog
   viewFieldsFoundItems: IViewField[] = [
     { name: 'Id', displayName: 'ID', sorting: true, isResizable: true, minWidth: 80, linkPropertyName:'webUrl' },
@@ -106,6 +107,38 @@ export default class ContentHealthManager extends React.Component<IContentHealth
      },
     { name: 'Description', displayName: 'Description', sorting: true, isResizable: true, minWidth: 100 }
   ];
+
+  viewFieldsPage: IViewField[] = [
+    { name: 'title', displayName: 'Title', sorting: true, isResizable: true, minWidth: 120 },
+    { name: 'name', displayName: 'Name', sorting: true, isResizable: true, minWidth: 100 },
+    { name: 'webUrl', displayName: 'URL', sorting: false, isResizable: true, minWidth: 200 },     
+    { name: 'Links', displayName: 'Links', sorting: false, isResizable: true, minWidth: 200,
+      render: (item, index, column) => {                                    
+        const entry = this.state.pageResults.filter(x=>x.pageID === item.id)[0];            
+
+        if (typeof entry === "undefined" || typeof entry.Links === "undefined")
+        {
+          return <>          
+          <CheckmarkCircleHintRegular />
+          </>;
+        }
+
+        if (entry.Links.filter(x=>x.IsBroken).length>0)
+        {
+          return (<>
+            <WarningColor />
+            &nbsp;<span>Found {entry.Links.length}. Broken links: {entry.Links.filter(x=>x.IsBroken).length}</span>
+            </>);
+        }
+        return <>          
+          <CheckmarkCircleColor />
+          &nbsp;
+          <span>Found {entry.Links.length}. Broken links: {entry.Links.filter(x=>x.IsBroken).length}</span>
+          </>; 
+      }
+     }
+  ];
+
   constructor(props: IContentHealthManagerProps) {
     super(props);
 
@@ -119,32 +152,12 @@ export default class ContentHealthManager extends React.Component<IContentHealth
       selectedPage: null,
       isLibraryReportOpen: false,
       selectedLibrary: null,
-      selectedTabValue: null,
-      viewFields: [
-        { name: 'title', displayName: 'Title', sorting: true, isResizable: true, minWidth: 120 },
-        { name: 'name', displayName: 'Name', sorting: true, isResizable: true, minWidth: 100 },
-        { name: 'webUrl', displayName: 'URL', sorting: false, isResizable: true, minWidth: 200 },
-        { name: 'InProgress', displayName: 'InProgress', sorting: false, isResizable: false, minWidth: 50,
-          render: (item, index, column) => {  
-            return <>
-             <SendRegular />
-            </>;
-            return item.InProgress ? "YES":"NO";
-          }
-        },        
-        { name: 'Links', displayName: 'Links', sorting: false, isResizable: true, minWidth: 200,
-          render: (item, index, column) => {                                    
-            const entry = this.state.pageResults.filter(x=>x.pageID === item.id)[0];            
-            if (typeof entry !== "undefined")
-            {
-              return `Found ${entry.Links.length}. Broken links: ${entry.Links.filter(x=>x.IsBroken).length}`;
-            }
-            return "-";
-          }
-         }
-      ],
-      pageEntries: []
+      selectedTabValue: null,      
+      pageEntries: [],
+      chkShowLibaries: true,
+      chkShowLists: true
     };
+    this.dataManager = new GraphDataManager(this.props.msGraphClientFactory, this.props.spHTTPClient);
   }
 
   private GetLibraryEntryByIndex(index: string):ListInformation
@@ -215,6 +228,36 @@ export default class ContentHealthManager extends React.Component<IContentHealth
                 <Button onClick={() => this.ShowLibraryReport()}>Show details</Button>
               </div>
             </div>
+            <div className={`${styles.row} ${styles.libraryCommands}`}> 
+                <div className={styles['col-sm2']}>
+                <Checkbox
+                    checked={this.state.chkShowLibaries}
+                    onChange={async (ev, checked: boolean) => {                                              
+                        const libraries = await this.dataManager.GetAllLists(this.GetSelectedSite().url, this.state.chkShowLists, checked);
+                        this.setState({ 
+                          libraryEntries: libraries,
+                          chkShowLibaries: checked
+                        }); 
+                      }
+                    }
+                    label="Libraries"
+                  />
+                  </div>
+                  <div className={styles['col-sm3']}>
+                <Checkbox 
+                    checked={this.state.chkShowLists}
+                    onChange={async (ev, checked: boolean) => {                    
+                        const libraries = await this.dataManager.GetAllLists(this.GetSelectedSite().url, checked, this.state.chkShowLibaries);
+                        this.setState({ 
+                          libraryEntries: libraries,
+                          chkShowLists: checked
+                        });                        
+                      }
+                    }
+                    label="Lists"
+                  />                  
+                </div>
+            </div>
             <ListView                
               items={this.state.libraryEntries}
               viewFields={this.viewFieldsLibs}
@@ -235,7 +278,7 @@ export default class ContentHealthManager extends React.Component<IContentHealth
           </div>
           <ListView                
             items={this.state.pageEntries}
-            viewFields={this.state.viewFields}
+            viewFields={this.viewFieldsPage}
             compact={true}                
             selectionMode={SelectionMode.single}
             selection={this.onListSelectionChanged}/>              
@@ -408,7 +451,7 @@ export default class ContentHealthManager extends React.Component<IContentHealth
     console.log(`Starting broken link process for site: ${this.state.selectedSiteId}`);
     console.log(`Processing ${this.state.pageEntries.length} pages...`);
 
-    const dataManager = new GraphDataManager(this.props.msGraphClientFactory, this.props.spHTTPClient);
+    //const dataManager = new GraphDataManager(this.props.msGraphClientFactory, this.props.spHTTPClient);
     const pageAnalyzer = new PageProcessing();
     try {
       // Iterate over all page entries and get their full content
@@ -417,7 +460,7 @@ export default class ContentHealthManager extends React.Component<IContentHealth
           console.log(`Processing page: ${pageEntry.title || pageEntry.name} (ID: ${pageEntry.InProgress})`);
           
           // Get the full page content using GetPageContent method
-          const fullPageContent = await dataManager.GetPageContent(this.state.selectedSiteId, pageEntry.id);
+          const fullPageContent = await this.dataManager.GetPageContent(this.state.selectedSiteId, pageEntry.id);
                     
           // TODO: Add broken link detection logic here
           const resultLinks = await pageAnalyzer.AnalyzePageContent(fullPageContent.canvasLayout!);          
@@ -444,10 +487,10 @@ export default class ContentHealthManager extends React.Component<IContentHealth
 
   public async CollectItemsFromListAndLibraries():Promise<void>
   {
-    const dataManager = new GraphDataManager(this.props.msGraphClientFactory, this.props.spHTTPClient);
+    //const dataManager = new GraphDataManager(this.props.msGraphClientFactory, this.props.spHTTPClient);
     const site : Site = this.GetSelectedSite();
     for (const listInfo of this.state.libraryEntries) {
-      const items = await dataManager.Query4ItemByDate(
+      const items = await this.dataManager.Query4ItemByDate(
         site.url,
         listInfo.Id,        
         listInfo.DefaultView.ServerRelativeUrl,
@@ -473,7 +516,7 @@ export default class ContentHealthManager extends React.Component<IContentHealth
       selectedSiteId: data.optionValue
     });
     const siteInfo : Site = this.state.SelectedSites.filter(x=>x.id === data.optionValue)[0];    
-    const libraries = await dataManager.GetAllLists(siteInfo.url);    
+    const libraries = await dataManager.GetAllLists(siteInfo.url, this.state.chkShowLists, this.state.chkShowLibaries);
     console.log("All lists", libraries);
     this.setState({ 
       libraryEntries: libraries      

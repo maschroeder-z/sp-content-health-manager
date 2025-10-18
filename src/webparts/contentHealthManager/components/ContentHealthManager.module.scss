@@ -9,9 +9,14 @@ https://learn.microsoft.com/en-us/sharepoint/dev/spfx/office-ui-fabric-integrati
   padding: 0px;
 }
 
-.col-sm7 {
+.col-sm2 {
   @include ms-Grid-col;
-  @include ms-sm7;
+  @include ms-sm2;
+}
+
+.col-sm3 {
+  @include ms-Grid-col;
+  @include ms-sm3;
 }
 
 .col-sm4 {
@@ -33,7 +38,6 @@ https://learn.microsoft.com/en-us/sharepoint/dev/spfx/office-ui-fabric-integrati
   @include ms-Grid-col;
   @include ms-sm7;
 }
-
 
 .col-sm8 {
   @include ms-Grid-col;

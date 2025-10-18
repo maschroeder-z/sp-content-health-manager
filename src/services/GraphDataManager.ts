@@ -99,7 +99,7 @@ export class GraphDataManager {
     return response.value as MicrosoftGraphBeta.List[];
   }
 
-  public async GetAllLists(siteUrl: string): Promise<ListInformation[]> {
+  public async GetAllLists(siteUrl: string, incLists: boolean, incLibraries: boolean): Promise<ListInformation[]> {
     try {      
       // Ensure the siteUrl has proper format and add the REST API endpoint
       const apiUrl = `${siteUrl}/_api/web/lists?$expand=DefaultView`;
@@ -120,7 +120,7 @@ export class GraphDataManager {
       const data = await response.json();
       
       // The SharePoint REST API returns data in a 'd' property with 'results' array
-      const lists = data.d?.results || [];      
+      const lists = data.d?.results.filter((x:any) => (x.BaseType===0 && incLists) || (x.BaseTemplate === 101 && x.BaseType===1 && incLibraries)) || [];      
       return lists.map((list: any) => ({
         AllowContentTypes: list.AllowContentTypes,
         BaseTemplate: list.BaseTemplate,
