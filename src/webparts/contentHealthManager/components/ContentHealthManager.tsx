@@ -31,9 +31,36 @@ interface IContentHealthManagerState {
   selectedTabValue: TabValue;
   chkShowLists: boolean;
   chkShowLibaries: boolean;
+  selectedFoundItem?: any | null;
 }
 
 export default class ContentHealthManager extends React.Component<IContentHealthManagerProps, IContentHealthManagerState> {
+  tempSelectedSites : Site[] =   [
+    {
+        "id": "0a83c49d-6da8-459e-8bb4-98be06a28dcc",
+        "webId": "ca9dc690-1f36-49b3-9283-05547458d435",
+        "title": "Meine Schulung",
+        "url": "https://devsky365.sharepoint.com/sites/Demo03"
+    },
+    {
+        "id": "399408ed-462d-4ec4-acfd-69ee87b54649",
+        "webId": "ca9dc690-1f36-49b3-9283-05547458d435",
+        "title": "Make your own LOB :-)",
+        "url": "https://devsky365.sharepoint.com/sites/my-own-lob-apps"
+    },
+    {
+        "id": "15908e6d-d68a-4154-a9b7-a8557f5ace69",
+        "webId": "ea4629cd-d579-48e8-9c74-9505c13fd042",
+        "title": "HeimHaus",
+        "url": "https://devsky365.sharepoint.com/sites/HeimHaus"
+    },
+    {
+        "id": "d6f6d04c-5c5b-468c-82d7-39d08e86dfa5",
+        "webId": "eb707bcc-5ead-49c5-81bc-3109c317f837",
+        "title": "Hausfeen",
+        "url": "https://devsky365.sharepoint.com/sites/Hausfeen"
+    }
+]
   dataManager: GraphDataManager;
   // View fields for found items in library report dialog
   viewFieldsFoundItems: IViewField[] = [
@@ -53,7 +80,13 @@ export default class ContentHealthManager extends React.Component<IContentHealth
         return <FieldDateRenderer text={date.toLocaleDateString()} />;    
       }
     },
-    { name: 'ContentTypeId', displayName: 'Content Type', sorting: true, isResizable: true, minWidth: 150 }
+    { name: 'ContentTypeId', displayName: 'Content Type', sorting: true, isResizable: true, minWidth: 150,
+      render: (item: any, inxdex, column) => {
+        if (typeof item.ContentType !== "undefined")
+          return item.ContentType;              
+        return item["ContentType.Name"];
+      }
+     }
   ];
 
   // BaseTemplate BaseType EnableAttachments EnableFolderCreation EnableVersioning ForceCheckout ItemCount LastItemModifiedDate LastItemUserModifiedDate
@@ -145,7 +178,7 @@ export default class ContentHealthManager extends React.Component<IContentHealth
     this.state = {     
       dateStartDate: new Date(),   
       pageResults: [],
-      SelectedSites: [],   
+      SelectedSites: this.tempSelectedSites,   
       libraryEntries: [],
       selectedSiteId: null,
       isReportOpen: false,
@@ -155,7 +188,8 @@ export default class ContentHealthManager extends React.Component<IContentHealth
       selectedTabValue: null,      
       pageEntries: [],
       chkShowLibaries: true,
-      chkShowLists: true
+      chkShowLists: true,
+      selectedFoundItem: null
     };
     this.dataManager = new GraphDataManager(this.props.msGraphClientFactory, this.props.spHTTPClient);
   }
@@ -173,10 +207,12 @@ export default class ContentHealthManager extends React.Component<IContentHealth
             <Field label="Select sites">
               <SitePicker
                 context={this.props.wpContext}              
-                mode={'site'}
+                mode={'site'}         
+                selectedSites={this.tempSelectedSites}       
                 allowSearch={true}
                 multiSelect={true}
                 onChange={(sites) => {                
+                  console.log(sites);
                   this.setState({ SelectedSites: sites as Site[] });            
                 }}
                 placeholder={'Select sites'}
@@ -224,6 +260,8 @@ export default class ContentHealthManager extends React.Component<IContentHealth
               </div>
               <div className={`${styles['col-sm7']} ${styles.libraryCommandsLeft}`}>    
                 <Button onClick={() => this.StartQueryLstAndLibraries()}>Find old data</Button>
+                &nbsp;
+                <Button onClick={() => this.StartQueryCheckedOutItems()}>Checked-out items</Button>
                 &nbsp;
                 <Button onClick={() => this.ShowLibraryReport()}>Show details</Button>
               </div>
@@ -386,12 +424,21 @@ export default class ContentHealthManager extends React.Component<IContentHealth
                       {this.state.selectedLibrary.FoundItems && this.state.selectedLibrary.FoundItems.length > 0 ? (
                         <div>
                           <div><strong>Total items found:</strong> {this.state.selectedLibrary.FoundItems.length}</div>
+                          <Button 
+                            onClick={this.onShowPermissionsClick}
+                            disabled={!this.state.selectedFoundItem}
+                            appearance="secondary"
+                            style={{ marginBottom: '8px' }}
+                          >
+                            Show Permissions
+                          </Button>
                           <div style={{ marginTop: 8, maxHeight: '300px' }}>
                             <ListView                
                               items={this.state.selectedLibrary.FoundItems}
                               viewFields={this.viewFieldsFoundItems}
                               compact={true}                
-                              selectionMode={SelectionMode.none}
+                              selectionMode={SelectionMode.single}
+                              selection={this.onFoundItemSelectionChanged}
                             />
                           </div>
                         </div>
@@ -487,11 +534,10 @@ export default class ContentHealthManager extends React.Component<IContentHealth
 
   public async CollectItemsFromListAndLibraries():Promise<void>
   {
-    //const dataManager = new GraphDataManager(this.props.msGraphClientFactory, this.props.spHTTPClient);
     const site : Site = this.GetSelectedSite();
     for (const listInfo of this.state.libraryEntries) {
       const items = await this.dataManager.Query4ItemByDate(
-        site.url,
+        site,
         listInfo.Id,        
         listInfo.DefaultView.ServerRelativeUrl,
         this.state.dateStartDate!
@@ -500,6 +546,38 @@ export default class ContentHealthManager extends React.Component<IContentHealth
       this.setState({ 
         libraryEntries: this.state.libraryEntries      
       });   
+    }
+  }
+
+  public async GetCheckedOutItems():Promise<void>
+  {
+    const site : Site = this.GetSelectedSite();
+    for (const listInfo of this.state.libraryEntries) {
+      const items = await this.dataManager.Query4CheckedOutItems(
+        site,
+        listInfo.Id,        
+        listInfo.DefaultView.ServerRelativeUrl,
+        this.state.dateStartDate!
+      );
+      listInfo.FoundItems = items;                  
+      this.setState({ 
+        libraryEntries: this.state.libraryEntries      
+      });   
+    }
+  }
+
+  private async StartQueryCheckedOutItems(): Promise<void> {
+    this.GetCheckedOutItems();
+  }
+
+  public async GetPermission4SelectedItem(site: Site, listID: string, listItemID: string): Promise<void> {
+    try {
+      const permissions = await this.dataManager.GetPermission4Item(site, listID, listItemID);
+      console.log('Item permissions:', permissions);
+      // You can add additional logic here to handle the permissions data
+      // For example, display them in a dialog or update the UI state
+    } catch (error) {
+      console.error('Error retrieving item permissions:', error);
     }
   }
 
@@ -543,5 +621,20 @@ export default class ContentHealthManager extends React.Component<IContentHealth
 
   private onTabSelect = (event: any, data: { value: TabValue }): void => {
     this.setState({ selectedTabValue: data.value });
+  }
+
+  private onFoundItemSelectionChanged = (items: any[]): void => {
+    const selected = (items && items.length > 0) ? items[0] : null;
+    this.setState({ selectedFoundItem: selected });
+  }
+
+  private onShowPermissionsClick = async (): Promise<void> => {
+    if (!this.state.selectedFoundItem || !this.state.selectedLibrary) {
+      console.warn('No item selected or no library selected');
+      return;
+    }
+
+    const site = this.GetSelectedSite();    
+    await this.GetPermission4SelectedItem(site, this.state.selectedLibrary.Id, this.state.selectedFoundItem.Id);
   }
 }

@@ -4,6 +4,7 @@ import type { ListInformation } from '../models/REST/ListInformation';
 
 //import * as MicrosoftGraph from "@microsoft/microsoft-graph-types-beta"; //[MicrosoftGraph.SitePage]
 import * as MicrosoftGraphBeta from "@microsoft/microsoft-graph-types-beta"
+import { Site } from '../models/Site';
 
 export class GraphDataManager {
   private readonly graphClientPromise: Promise<MSGraphClientV3>;
@@ -184,11 +185,89 @@ export class GraphDataManager {
     }
   }
 
-/**
+  public async Query4CheckedOutItems(site: Site, listID: string, defaultUrl: string, dateStart: Date): Promise<MicrosoftGraphBeta.ListItem[]> {
+    defaultUrl = site.url + "/_layouts/15/listform.aspx?PageType=4&ListId=";
+    try {
+      const client = await this.graphClientPromise;
+      
+      // Query for checked-out items using Microsoft Graph API
+      const response = await client
+        .api(`/sites/${encodeURIComponent(site.id)}/lists/${listID}/items`)
+        .version('v1.0')
+        .filter('fields/CheckoutUser ne null')
+        .expand('fields')
+        .select(['id', 'fields'])
+        .get();
+
+      const items: MicrosoftGraphBeta.ListItem[] = (response?.value || []).map((item: any) => ({
+        Id: item.id,
+        Title: item.fields.FileLeafRef,      
+        ...item.fields,        
+        webUrl: `${defaultUrl}${listID}&id=${item.id}`
+      }));
+
+      return items;
+    } catch (error) {
+      console.error('Error querying checked-out items:', error);
+      throw error;
+    }
+  }
+
+  public async Query4ItemByDate(site: Site, listID: string, defaultUrl: string, dateStart: Date): Promise<MicrosoftGraphBeta.ListItem[]> {
+    try {
+      const client = await this.graphClientPromise;
+      
+      // Format the date for Graph API filter (ISO format)
+      const formattedDate = dateStart.toISOString();
+      
+      // Query for items not modified after the given date using Microsoft Graph API
+      const response = await client
+        .api(`/sites/${encodeURIComponent(site.id)}/lists/${listID}/items`)
+        .version('v1.0')
+        .filter(`fields/Modified le '${formattedDate}'`)
+        .expand('fields')
+        .select(['id', 'fields'])                
+        .get();
+
+      const items: MicrosoftGraphBeta.ListItem[] = (response?.value || []).map((item: any) => ({
+        Id: item.id,
+        Title: item.fields.Title || item.fields.FileLeafRef,
+        Created: item.fields.Created,
+        Modified: item.fields.Modified,
+        ContentTypeId: item.fields.ContentTypeId,
+        ...item.fields,
+        webUrl: `${defaultUrl}${listID}&id=${item.id}`
+      }));
+
+      return items;
+    } catch (error) {
+      console.error('Error querying items by date:', error);
+      throw error;
+    }
+  }
+
+  public async GetPermission4Item(site: Site, listID: string, listItemID: string): Promise<MicrosoftGraphBeta.Permission[]> {
+    try {
+      const client = await this.graphClientPromise;
+      alert("yo2");
+      // Query for permission information using Microsoft Graph API
+      const response = await client
+        .api(`/sites/${encodeURIComponent(site.id)}/lists/${listID}/items/${listItemID}/permissions`)
+        .version('beta')
+        .get();
+      console.log(response?.value);
+      return response?.value || [];
+    } catch (error) {
+      console.error('Error retrieving item permissions:', error);
+      throw error;
+    }
+  }
+
+  /**
  * Queries list items by date using SharePoint REST API
  * Endpoint: /[siteUrl]/_api/web/lists('[listID]')/GetItems(query=@v1)?@v1={'ViewXml':'<View><Query><Where><Leq><FieldRef Name=Modified/><Value Type=DateTime>[dateStart]</Value></Leq></Where></Query></View>'}&$expand=file
  */
-  public async Query4ItemByDate(siteUrl: string, listID: string, defaultUrl: string, dateStart: Date): Promise<MicrosoftGraphBeta.ListItem[]> {
+  public async Query4ItemByDateClassic(siteUrl: string, listID: string, defaultUrl: string, dateStart: Date): Promise<MicrosoftGraphBeta.ListItem[]> {
     if (typeof defaultUrl !== "undefined")
     {
       try {
@@ -223,7 +302,7 @@ export class GraphDataManager {
         
         // Construct the API URL
   1     //const apiUrl = `${siteUrl}/_api/web/lists('${listID}')/GetItems(query=@v1)?@v1=${queryParam}&$expand=file`;
-        const apiUrl = `${siteUrl}/_api/web/lists('${listID}')/GetItems?$expand=ParentList,File`;
+        const apiUrl = `${siteUrl}/_api/web/lists('${listID}')/GetItems?$expand=ParentList,File,ContentType`;
         
         const response = await this.spHTTPClient.post(
           apiUrl,
@@ -241,7 +320,7 @@ export class GraphDataManager {
         const items : MicrosoftGraphBeta.ListItem[] = data.d?.results || [];  
         items.forEach((item : MicrosoftGraphBeta.ListItem)=> {
           // https://[Your SharePoint SiteURL]/_layouts/15/listform.aspx?PageType=[Type]&ListId=[ListGUID]&ID=[Item ID]
-          console.log(item);
+          //console.log(item);          
           item.webUrl = `${defaultUrl}${(item as any).ParentList.Id}&id=${(item as any).Id}`;
           //item.webUrl = `/_layouts/15/listform.aspx?PageType=4&ListId=${(item as any).GUID}`
         });                
