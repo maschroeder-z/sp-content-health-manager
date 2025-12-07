@@ -5,13 +5,13 @@ import { ListView, type IViewField } from '@pnp/spfx-controls-react/lib/ListView
 import { Checkbox, DatePicker, SelectionMode } from '@fluentui/react';
 import { SitePicker } from "@pnp/spfx-controls-react/lib/SitePicker";
 import type { Site } from '../../../models/Site';
-import { Button, Dropdown, Option, Dialog, DialogSurface, DialogBody, DialogTitle, DialogContent, DialogActions, Field, TabList, Tab, TabValue } from '@fluentui/react-components';
+import { Button, Dropdown, Option, Dialog, DialogSurface, DialogBody, DialogTitle, DialogContent, DialogActions, Field, TabList, Tab, TabValue, Spinner } from '@fluentui/react-components';
 import GraphDataManager from '../../../services/GraphDataManager';
 import { PageProcessing } from '../../../Core/PageProcessing';
 import { Page } from '../../../models/Page';
 import { PageResult } from '../../../models/PageResult';
 import type { LinkInfo } from '../../../models/LinkInfo';
-import { CheckmarkCircleColor, CheckmarkCircleHintRegular, WarningColor } from "@fluentui/react-icons";
+import { CheckmarkCircleColor, CheckmarkCircleHintRegular, FlagPrideIntersexInclusiveProgressFilled, QuestionCircleColor, WarningColor, Search24Regular, DataTrending24Regular, List24Regular, Link24Regular, Clock24Regular, LockClosed24Regular } from "@fluentui/react-icons";
 import { ListInformation } from '../../../models/REST/ListInformation';
 import { FieldDateRenderer,FieldTextRenderer } from '@pnp/spfx-controls-react';
 import { ListTemplateType } from '../../../Core/ListTemplateTypes';
@@ -32,6 +32,7 @@ interface IContentHealthManagerState {
   chkShowLists: boolean;
   chkShowLibaries: boolean;
   selectedFoundItem?: any | null;
+  isQueryingLibraries?: boolean;
 }
 
 export default class ContentHealthManager extends React.Component<IContentHealthManagerProps, IContentHealthManagerState> {
@@ -189,7 +190,8 @@ export default class ContentHealthManager extends React.Component<IContentHealth
       pageEntries: [],
       chkShowLibaries: true,
       chkShowLists: true,
-      selectedFoundItem: null
+      selectedFoundItem: null,
+      isQueryingLibraries: false
     };
     this.dataManager = new GraphDataManager(this.props.msGraphClientFactory, this.props.spHTTPClient);
   }
@@ -202,8 +204,46 @@ export default class ContentHealthManager extends React.Component<IContentHealth
   public render(): React.ReactElement<IContentHealthManagerProps> {
     return (
       <section className={styles.contentHealthManager}>
+        {this.state.SelectedSites.length === 0 && (
+          <div className={styles.summarySection}>
+            <div className={styles.summaryDescription}>
+              <Search24Regular className={styles.summaryIcon} />
+              <div>
+                <h3>Content Health Manager</h3>
+                <p>
+                  <DataTrending24Regular className={styles.inlineIcon} />
+                  This application helps you analyze and maintain the health of your SharePoint content by identifying broken links, 
+                  finding outdated content based on modification dates, and detecting checked-out items that may need attention. 
+                  Use this tool to ensure your SharePoint sites remain organized and accessible.
+                </p>
+              </div>
+            </div>
+            
+            <div className={styles.instructionsSection}>
+              <h4><List24Regular className={styles.inlineIcon} />How to use:</h4>
+              <ol className={styles.stepList}>
+                <li>
+                  <strong>First, select sites</strong> - Choose all the SharePoint sites you want to analyze from the site picker below.
+                </li>
+                <li>
+                  <strong>Second, select a single site</strong> - From the dropdown, pick one specific site to process and analyze.
+                </li>
+                <li>
+                  <strong>Start query to find:</strong>
+                  <ul className={styles.subList}>
+                    <li><Link24Regular className={styles.inlineIcon} />Broken links in pages</li>
+                    <li><Clock24Regular className={styles.inlineIcon} />Old content for a given start date</li>
+                    <li><LockClosed24Regular className={styles.inlineIcon} />Checked out content items</li>
+                  </ul>
+                </li>
+              </ol>
+            </div>
+          </div>
+        )}
+
         <div className={styles.row}>
-          <div className={styles['col-sm6']}>
+          <div className={styles['col-sm12']}>
+            {this.state.SelectedSites.length === 0 && <p className={styles.infoMessage}><QuestionCircleColor />Select first all sites that you want to query and process</p>}            
             <Field label="Select sites">
               <SitePicker
                 context={this.props.wpContext}              
@@ -211,36 +251,46 @@ export default class ContentHealthManager extends React.Component<IContentHealth
                 selectedSites={this.tempSelectedSites}       
                 allowSearch={true}
                 multiSelect={true}
+                className={styles.sitePicker}                
+                trimDuplicates={true}
                 onChange={(sites) => {                
                   console.log(sites);
                   this.setState({ SelectedSites: sites as Site[] });            
                 }}
-                placeholder={'Select sites'}
+                placeholder={'Select all sites to process...'}
                 searchPlaceholder={'Filter sites'} />
               </Field>
           </div>
-          <div className={styles['col-sm6']}>
-            <Field label="Choose a Site">
-              <Dropdown 
-                id={'ddCurrentSite'} 
-                inlinePopup={true}                 
-                onOptionSelect={this.onDropdDownSelectionChanged}
-                placeholder="Select a Site to process">
-                {this.state.SelectedSites.map((entry:Site) => (
-                  <Option value={entry.id} key={entry.webId} >
-                    {entry.title}
-                  </Option>
-                ))}
-              </Dropdown>     
-            </Field>  
+          <div className={styles['col-sm12']}>      
+            {this.state.SelectedSites.length > 0 && this.state.selectedSiteId === null && <div>
+              <p className={styles.infoMessage}><QuestionCircleColor />To continue, please select first a site to process</p>
+            </div>}
+            {this.state.SelectedSites.length > 0 &&
+              <Field label="Choose a Site">
+                <Dropdown 
+                  id={'ddCurrentSite'} 
+                  inlinePopup={true}                 
+                  onOptionSelect={this.onDropdDownSelectionChanged}
+                  placeholder="Select a Site to process">
+                  {this.state.SelectedSites.map((entry:Site) => (
+                    <Option value={entry.id} key={entry.webId} >
+                      {entry.title}
+                    </Option>
+                  ))}
+                </Dropdown>     
+              </Field>
+              }
           </div>
         </div>
 
-
-        {this.state.selectedSiteId && <TabList selectedValue={this.state.selectedTabValue} onTabSelect={this.onTabSelect}>
+        {this.state.selectedSiteId && <>        
+        <p className={styles.infoMessage}><FlagPrideIntersexInclusiveProgressFilled />Results for site: 
+          <a href={this.GetSelectedSite().url} target={'_blank'} rel={'noreferrer'}><strong>{this.GetSelectedSite().title}</strong></a>
+        </p>
+        <TabList selectedValue={this.state.selectedTabValue} onTabSelect={this.onTabSelect}>
           <Tab value="tab1">Broken Links Analysis</Tab>
           <Tab value="tab2">Library Analysis</Tab>
-        </TabList> }
+        </TabList> </> }
 
         {this.state.selectedTabValue === 'tab2' && (
           <div id="Register1" className={styles.row}>            
@@ -259,16 +309,19 @@ export default class ContentHealthManager extends React.Component<IContentHealth
                 </Field>
               </div>
               <div className={`${styles['col-sm7']} ${styles.libraryCommandsLeft}`}>    
-                <Button onClick={() => this.StartQueryLstAndLibraries()}>Find old data</Button>
+                <Button onClick={() => this.StartQueryLstAndLibraries()} disabled={this.state.isQueryingLibraries}>Search</Button>
+                {this.state.isQueryingLibraries && <Spinner size="tiny" className={styles.progressSpinner} />}
                 &nbsp;
-                <Button onClick={() => this.StartQueryCheckedOutItems()}>Checked-out items</Button>
-                &nbsp;
-                <Button onClick={() => this.ShowLibraryReport()}>Show details</Button>
+                <Button onClick={() => this.StartQueryCheckedOutItems()}>Checked-out items</Button>                                
               </div>
             </div>
             <div className={`${styles.row} ${styles.libraryCommands}`}> 
-                <div className={styles['col-sm2']}>
-                <Checkbox
+                <div className={styles['col-sm4']}>
+                  <Button onClick={() => this.ShowLibraryReport()} disabled={!this.state.selectedLibrary}>Open details</Button>
+                </div>
+                
+                <div className={`${styles['col-sm8']} ${styles.checkboxContainer}`}>
+                  <Checkbox
                     checked={this.state.chkShowLibaries}
                     onChange={async (ev, checked: boolean) => {                                              
                         const libraries = await this.dataManager.GetAllLists(this.GetSelectedSite().url, this.state.chkShowLists, checked);
@@ -280,9 +333,7 @@ export default class ContentHealthManager extends React.Component<IContentHealth
                     }
                     label="Libraries"
                   />
-                  </div>
-                  <div className={styles['col-sm3']}>
-                <Checkbox 
+                  <Checkbox 
                     checked={this.state.chkShowLists}
                     onChange={async (ev, checked: boolean) => {                    
                         const libraries = await this.dataManager.GetAllLists(this.GetSelectedSite().url, checked, this.state.chkShowLibaries);
@@ -293,7 +344,7 @@ export default class ContentHealthManager extends React.Component<IContentHealth
                       }
                     }
                     label="Lists"
-                  />                  
+                  />  
                 </div>
             </div>
             <ListView                
@@ -311,7 +362,7 @@ export default class ContentHealthManager extends React.Component<IContentHealth
             <div className={`${styles['col-sm12']} ${styles.libraryCommandsLeft}`}>              
               <Button onClick={() => this.StartBrokenLinkProcess()}>Find Broken Links</Button>
               &nbsp;
-              <Button onClick={() => this.ShowPageReport()}>Open details</Button>
+              <Button onClick={() => this.ShowPageReport()} disabled={!this.state.selectedPage}>Open details</Button>
             </div>
           </div>
           <ListView                
@@ -322,11 +373,7 @@ export default class ContentHealthManager extends React.Component<IContentHealth
             selection={this.onListSelectionChanged}/>              
           </div>
         )}                
-        
-        {this.state.selectedSiteId === null && <div>
-            <p>Select a site to process</p>
-          </div>}
-        
+                
         <Dialog open={!!this.state.isReportOpen} onOpenChange={(_: any, data: any) => this.setState({ isReportOpen: !!data.open })} modalType={'alert'}>
           <DialogSurface>
             <DialogBody>
@@ -582,7 +629,12 @@ export default class ContentHealthManager extends React.Component<IContentHealth
   }
 
   private async StartQueryLstAndLibraries(): Promise<void> {
-    this.CollectItemsFromListAndLibraries();
+    this.setState({ isQueryingLibraries: true });
+    try {
+      await this.CollectItemsFromListAndLibraries();
+    } finally {
+      this.setState({ isQueryingLibraries: false });
+    }
   }
 
   private onDropdDownSelectionChanged = async (event: any, data: any): Promise<void> => {    

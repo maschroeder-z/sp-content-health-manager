@@ -55,6 +55,21 @@ https://learn.microsoft.com/en-us/sharepoint/dev/spfx/office-ui-fabric-integrati
 
 .libraryCommandsLeft {
   text-align: right;
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 8px;
+}
+
+.progressSpinner {
+  margin-left: 4px;
+}
+
+.checkboxContainer {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 16px;
 }
 
 
@@ -68,13 +83,8 @@ https://learn.microsoft.com/en-us/sharepoint/dev/spfx/office-ui-fabric-integrati
   }
 }
 
-.welcome {
-  text-align: center;
-}
-
-.welcomeImage {
+.sitePicker {
   width: 100%;
-  max-width: 420px;
 }
 
 .links {
@@ -88,5 +98,101 @@ https://learn.microsoft.com/en-us/sharepoint/dev/spfx/office-ui-fabric-integrati
       color: "[theme:linkHovered, default: #014446]";
       color: var(--linkHovered); // note: CSS Custom Properties support is limited to modern browsers only
     }
+  }
+}
+
+.infoMessage {
+  font-size: 16px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  
+  svg {
+    flex-shrink: 0;
+  }
+}
+
+.summarySection {
+  margin-bottom: 10px;
+  padding: 8px;
+  background-color: "[theme:neutralLighter, default: #f3f2f1]";
+  background-color: var(--neutralLighter);
+  border-radius: 4px;
+  border: 1px solid "[theme:neutralLight, default: #edebe9]";
+  border-color: var(--neutralLight);
+}
+
+.summaryDescription {
+  display: flex;
+  gap: 16px;
+  margin-bottom: 20px;
+  
+  h3 {
+    margin-top: 0;
+    margin-bottom: 8px;
+    font-size: 20px;
+    font-weight: 600;
+  }
+  
+  p {
+    margin: 0;
+    line-height: 1.5;
+    font-size: 14px;
+  }
+}
+
+.summaryIcon {
+  flex-shrink: 0;
+  width: 32px;
+  height: 32px;
+  color: "[theme:themePrimary, default: #0078d4]";
+  color: var(--themePrimary);
+  margin-top: 4px;
+}
+
+.inlineIcon {
+  display: inline-block;
+  vertical-align: middle;
+  width: 16px;
+  height: 16px;
+  margin-right: 6px;
+  margin-left: 2px;
+}
+
+.instructionsSection {
+  h4 {
+    margin-top: 0;
+    margin-bottom: 12px;
+    font-size: 16px;
+    font-weight: 600;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+}
+
+.stepList {
+  margin: 0;
+  padding-left: 24px;
+  
+  li {
+    margin-bottom: 12px;
+    line-height: 1.6;
+    
+    strong {
+      font-weight: 600;
+    }
+  }
+}
+
+.subList {
+  margin-top: 8px;
+  margin-bottom: 0;
+  padding-left: 24px;
+  list-style-type: none;
+  
+  li {
+    margin-bottom: 6px;
+    line-height: 1.5;
   }
 }

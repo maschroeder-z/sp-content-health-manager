@@ -248,8 +248,7 @@ export class GraphDataManager {
 
   public async GetPermission4Item(site: Site, listID: string, listItemID: string): Promise<MicrosoftGraphBeta.Permission[]> {
     try {
-      const client = await this.graphClientPromise;
-      alert("yo2");
+      const client = await this.graphClientPromise;      
       // Query for permission information using Microsoft Graph API
       const response = await client
         .api(`/sites/${encodeURIComponent(site.id)}/lists/${listID}/items/${listItemID}/permissions`)
