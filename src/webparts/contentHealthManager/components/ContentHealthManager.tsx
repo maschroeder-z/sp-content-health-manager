@@ -313,7 +313,12 @@ export default class ContentHealthManager extends React.Component<IContentHealth
                 </Field>
               </div>
               <div className={`${styles['col-sm7']} ${styles.libraryCommandsLeft}`}>    
-                <Button onClick={() => this.StartQueryLstAndLibraries()} disabled={this.state.isQueryingLibraries}>Search</Button>
+                <Button onClick={() => this.StartQueryLstAndLibraries()} disabled={this.state.isQueryingLibraries}>
+                  {!this.state.selectedLibrary && <span>Query all libraries</span>}
+                  {this.state.selectedLibrary && <span>Query library</span>}
+                </Button>
+                
+                
                 {this.state.isQueryingLibraries && <Spinner size="tiny" className={styles.progressSpinner} />}
                 &nbsp;
                 <Button onClick={() => this.StartQueryCheckedOutItems()}>Checked-out items</Button>                                
@@ -650,18 +655,34 @@ export default class ContentHealthManager extends React.Component<IContentHealth
   public async CollectItemsFromListAndLibraries():Promise<void>
   {
     const site : Site = this.GetSelectedSite();
-    for (const listInfo of this.state.libraryEntries) {
+    console.log(this.state.selectedLibrary);
+    if (this.state.selectedLibrary) {
       const items = await this.dataManager.Query4ItemByDate(
         site,
-        listInfo.Id,        
-        listInfo.DefaultView.ServerRelativeUrl,
+        this.state.selectedLibrary.Id,        
+        this.state.selectedLibrary.ParentWebUrl!,
         this.state.dateStartDate!
       );
-      listInfo.FoundItems = items;            
-      this.setState({ 
-        libraryEntries: this.state.libraryEntries      
-      });   
+      this.state.selectedLibrary.FoundItems = items;
+    } 
+    else 
+    {
+      for (const listInfo of this.state.libraryEntries) {
+        const items = await this.dataManager.Query4ItemByDate(
+          site,
+          listInfo.Id,        
+          listInfo.ParentWebUrl!,
+          this.state.dateStartDate!
+        );
+        listInfo.FoundItems = items;            
+        this.setState({ 
+          libraryEntries: this.state.libraryEntries      
+        });   
+      }
     }
+    this.setState({ 
+      libraryEntries: this.state.libraryEntries      
+    });
   }
 
   public async GetCheckedOutItems():Promise<void>

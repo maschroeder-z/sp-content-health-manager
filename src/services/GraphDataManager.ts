@@ -219,6 +219,10 @@ export class GraphDataManager {
       
       // Format the date for Graph API filter (ISO format)
       const formattedDate = dateStart.toISOString();
+
+      const urlToDetails:string[] = defaultUrl.split("/");
+      urlToDetails.pop();
+      const urlDispForm : string = urlToDetails.join("/") + "/_layouts/15/listform.aspx?PageType=4";
       
       // Query for items not modified after the given date using Microsoft Graph API
       const response = await client
@@ -236,7 +240,7 @@ export class GraphDataManager {
         Modified: item.fields.Modified,
         ContentTypeId: item.fields.ContentTypeId,
         ...item.fields,
-        webUrl: `${defaultUrl}${listID}&id=${item.id}`
+        webUrl: `${urlDispForm}&id=${item.id}&listid=${listID}`
       }));
 
       return items;
