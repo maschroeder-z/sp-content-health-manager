@@ -2,7 +2,7 @@ import * as React from 'react';
 import styles from './ContentHealthManager.module.scss';
 import type { IContentHealthManagerProps } from './IContentHealthManagerProps';
 import { ListView, type IViewField } from '@pnp/spfx-controls-react/lib/ListView';
-import { Checkbox, DatePicker, SelectionMode } from '@fluentui/react';
+import { Checkbox, DatePicker, SelectionMode, Toggle } from '@fluentui/react';
 import { SitePicker } from "@pnp/spfx-controls-react/lib/SitePicker";
 import type { Site } from '../../../models/Site';
 import { Button, Dropdown, Option, Dialog, DialogSurface, DialogBody, DialogTitle, DialogContent, DialogActions, Field, TabList, Tab, TabValue, Spinner } from '@fluentui/react-components';
@@ -15,6 +15,7 @@ import { CheckmarkCircleColor, CheckmarkCircleHintRegular, FlagPrideIntersexIncl
 import { ListInformation } from '../../../models/REST/ListInformation';
 import { FieldDateRenderer,FieldTextRenderer } from '@pnp/spfx-controls-react';
 import { ListTemplateType } from '../../../Core/ListTemplateTypes';
+import * as strings from 'ContentHealthManagerWebPartStrings';
 //import * as MicrosoftGraphBeta from "@microsoft/microsoft-graph-types-beta"
 
 interface IContentHealthManagerState {      
@@ -34,7 +35,8 @@ interface IContentHealthManagerState {
   selectedFoundItem?: any | null;
   isQueryingLibraries?: boolean;
   isProcessingBrokenLinks?: boolean;
-  expandedContentSections: Set<number>;
+  expandedContentSections: Set<string>;
+  showOnlyBrokenLinks: boolean;
 }
 
 export default class ContentHealthManager extends React.Component<IContentHealthManagerProps, IContentHealthManagerState> {
@@ -95,50 +97,56 @@ export default class ContentHealthManager extends React.Component<IContentHealth
   // BaseTemplate BaseType EnableAttachments EnableFolderCreation EnableVersioning ForceCheckout ItemCount LastItemModifiedDate LastItemUserModifiedDate
   viewFieldsLibs: IViewField[] = [
     { name: 'Title', displayName: 'Title', sorting: true, isResizable: true, minWidth: 120, linkPropertyName:'DefaultView.ServerRelativeUrl'},
-    { 
-      name: 'BaseTemplate', displayName: 'Template', sorting: true, isResizable: true, minWidth: 100,
-      render: (item:ListInformation, index, column) => {        
-        return ListTemplateType[item.BaseTemplate];
+    { name: 'ItemCount', displayName: 'Items', sorting: true, isResizable: true, minWidth: 120 },
+    { name: 'FoundItems', displayName: strings.FoundLabel, sorting: true, isResizable: true, minWidth: 120,
+      render: (item:ListInformation, index, column) => {             
+        const entry = this.GetLibraryEntryByIndex(item.Id);
+        if (typeof entry.FoundItems !== "undefined" && entry.FoundItems !== null)
+        {
+          return <FieldTextRenderer text={`${strings.FoundLabel}: ${entry.FoundItems?.length}`} />;
+        }
+        else
+          return <FieldTextRenderer text={strings.StartQueryForResults} />;
       }
-    },
+     },    
     { 
-      name: 'Created', displayName: 'created at', sorting: true, isResizable: true, minWidth: 100,
+      name: 'Created', displayName: strings.CreatedAtLabel, sorting: true, isResizable: true, minWidth: 100,
       render: (item:ListInformation, index, column) => {
         const date = new Date(item.Created);
         return <FieldDateRenderer text={date.toLocaleDateString()} />;    
       }
     },
     { 
-      name: 'LastItemModifiedDate', displayName: 'Last change', sorting: true, isResizable: true, minWidth: 120, linkPropertyName:'webUrl',
+      name: 'LastItemModifiedDate', displayName: strings.LastChangeLabel, sorting: true, isResizable: true, minWidth: 120, linkPropertyName:'webUrl',
       render: (item:ListInformation, index, column) => {
         const date = new Date(item.LastItemModifiedDate);
         return <FieldDateRenderer text={date.toLocaleString()} />;  
       }
     },
     { 
-      name: 'LastItemUserModifiedDate', displayName: 'User changed', sorting: true, isResizable: true, minWidth: 120, linkPropertyName:'webUrl',
+      name: 'LastItemUserModifiedDate', displayName: strings.UserChangedLabel, sorting: true, isResizable: true, minWidth: 120, linkPropertyName:'webUrl',
       render: (item:ListInformation, index, column) => {
         const date = new Date(item.LastItemUserModifiedDate);
         return <FieldDateRenderer text={date.toLocaleString()} />;
       }
     },
     { 
-      name: 'LastItemDeletedDate', displayName: 'last deletion', sorting: true, isResizable: true, minWidth: 100,
+      name: 'LastItemDeletedDate', displayName: strings.LastDeletionLabel, sorting: true, isResizable: true, minWidth: 100,
       render: (item:ListInformation, index, column) => {
         const date = new Date(item.LastItemDeletedDate);
         return <FieldDateRenderer text={date.toLocaleString()} />;
       }
     },
     { name: 'ItemCount', displayName: 'Items', sorting: true, isResizable: true, minWidth: 120 },
-    { name: 'FoundItems', displayName: 'Found', sorting: true, isResizable: true, minWidth: 120,
+    { name: 'FoundItems', displayName: strings.FoundLabel, sorting: true, isResizable: true, minWidth: 120,
       render: (item:ListInformation, index, column) => {             
         const entry = this.GetLibraryEntryByIndex(item.Id);
         if (typeof entry.FoundItems !== "undefined" && entry.FoundItems !== null)
         {
-          return <FieldTextRenderer text={`Found: ${entry.FoundItems?.length}`} />;
+          return <FieldTextRenderer text={`${strings.FoundLabel}: ${entry.FoundItems?.length}`} />;
         }
         else
-          return <FieldTextRenderer text="start query fo results" />;
+          return <FieldTextRenderer text={strings.StartQueryForResults} />;
       }
      },
     { name: 'Description', displayName: 'Description', sorting: true, isResizable: true, minWidth: 100 }
@@ -163,13 +171,13 @@ export default class ContentHealthManager extends React.Component<IContentHealth
         {
           return (<>
             <WarningColor />
-            &nbsp;<span>Found {entry.Links.length}. Broken links: {entry.Links.filter(x=>x.IsBroken).length}</span>
+            &nbsp;<span>{strings.FoundLinksCount.replace('{0}', entry.Links.length.toString()).replace('{1}', entry.Links.filter(x=>x.IsBroken).length.toString())}</span>
             </>);
         }
         return <>          
           <CheckmarkCircleColor />
           &nbsp;
-          <span>Found {entry.Links.length}. Broken links: {entry.Links.filter(x=>x.IsBroken).length}</span>
+          <span>{strings.FoundLinksCount.replace('{0}', entry.Links.length.toString()).replace('{1}', entry.Links.filter(x=>x.IsBroken).length.toString())}</span>
           </>; 
       }
      }
@@ -195,7 +203,8 @@ export default class ContentHealthManager extends React.Component<IContentHealth
       selectedFoundItem: null,
       isQueryingLibraries: false,
       isProcessingBrokenLinks: false,
-      expandedContentSections: new Set<number>()
+      expandedContentSections: new Set<string>(),
+      showOnlyBrokenLinks: false
     };
     this.dataManager = new GraphDataManager(this.props.msGraphClientFactory, this.props.spHTTPClient);
   }
@@ -213,31 +222,29 @@ export default class ContentHealthManager extends React.Component<IContentHealth
             <div className={styles.summaryDescription}>
               <Search24Regular className={styles.summaryIcon} />
               <div>
-                <h3>Content Health Manager</h3>
+                <h3>{strings.ContentHealthManagerTitle}</h3>
                 <p>
                   <DataTrending24Regular className={styles.inlineIcon} />
-                  This application helps you analyze and maintain the health of your SharePoint content by identifying broken links, 
-                  finding outdated content based on modification dates, and detecting checked-out items that may need attention. 
-                  Use this tool to ensure your SharePoint sites remain organized and accessible.
+                  {strings.ContentHealthManagerDescription}
                 </p>
               </div>
             </div>
             
             <div className={styles.instructionsSection}>
-              <h4><List24Regular className={styles.inlineIcon} />How to use:</h4>
+              <h4><List24Regular className={styles.inlineIcon} />{strings.HowToUseHeading}</h4>
               <ol className={styles.stepList}>
                 <li>
-                  <strong>First, select sites</strong> - Choose all the SharePoint sites you want to analyze from the site picker below.
+                  <strong>{strings.FirstSelectSites.split(' - ')[0]}</strong> - {strings.FirstSelectSites.split(' - ')[1]}
                 </li>
                 <li>
-                  <strong>Second, select a single site</strong> - From the dropdown, pick one specific site to process and analyze.
+                  <strong>{strings.SecondSelectSingleSite.split(' - ')[0]}</strong> - {strings.SecondSelectSingleSite.split(' - ')[1]}
                 </li>
                 <li>
-                  <strong>Start query to find:</strong>
+                  <strong>{strings.StartQueryToFind}</strong>
                   <ul className={styles.subList}>
-                    <li><Link24Regular className={styles.inlineIcon} />Broken links in pages</li>
-                    <li><Clock24Regular className={styles.inlineIcon} />Old content for a given start date</li>
-                    <li><LockClosed24Regular className={styles.inlineIcon} />Checked out content items</li>
+                    <li><Link24Regular className={styles.inlineIcon} />{strings.BrokenLinksInPages}</li>
+                    <li><Clock24Regular className={styles.inlineIcon} />{strings.OldContentForDate}</li>
+                    <li><LockClosed24Regular className={styles.inlineIcon} />{strings.CheckedOutContentItems}</li>
                   </ul>
                 </li>
               </ol>
@@ -247,8 +254,8 @@ export default class ContentHealthManager extends React.Component<IContentHealth
 
         <div className={styles.row}>
           <div className={styles['col-sm12']}>
-            {this.state.SelectedSites.length === 0 && <p className={styles.infoMessage}><QuestionCircleColor />Select first all sites that you want to query and process</p>}            
-            <Field label="Select sites">
+            {this.state.SelectedSites.length === 0 && <p className={styles.infoMessage}><QuestionCircleColor />{strings.SelectFirstAllSites}</p>}            
+            <Field label={strings.SelectSitesLabel}>
               <SitePicker
                 context={this.props.wpContext}              
                 mode={'site'}         
@@ -261,21 +268,21 @@ export default class ContentHealthManager extends React.Component<IContentHealth
                   console.log(sites);
                   this.setState({ SelectedSites: sites as Site[] });            
                 }}
-                placeholder={'Select all sites to process...'}
-                searchPlaceholder={'Filter sites'} />
+                placeholder={strings.SelectAllSitesPlaceholder}
+                searchPlaceholder={strings.FilterSitesPlaceholder} />
               </Field>
           </div>
           <div className={styles['col-sm12']}>      
             {this.state.SelectedSites.length > 0 && this.state.selectedSiteId === null && <div>
-              <p className={styles.infoMessage}><QuestionCircleColor />To continue, please select first a site to process</p>
+              <p className={styles.infoMessage}><QuestionCircleColor />{strings.ToContinueSelectSite}</p>
             </div>}
             {this.state.SelectedSites.length > 0 &&
-              <Field label="Choose a Site">
+              <Field label={strings.ChooseSiteLabel}>
                 <Dropdown 
                   id={'ddCurrentSite'} 
                   inlinePopup={true}                 
                   onOptionSelect={this.onDropdDownSelectionChanged}
-                  placeholder="Select a Site to process">
+                  placeholder={strings.SelectSitePlaceholder}>
                   {this.state.SelectedSites.map((entry:Site) => (
                     <Option value={entry.id} key={entry.webId} >
                       {entry.title}
@@ -288,24 +295,24 @@ export default class ContentHealthManager extends React.Component<IContentHealth
         </div>
 
         {this.state.selectedSiteId && <>        
-        <p className={styles.infoMessage}><FlagPrideIntersexInclusiveProgressFilled />Results for site: 
+        <p className={styles.infoMessage}><FlagPrideIntersexInclusiveProgressFilled />{strings.ResultsForSite} 
           <a href={this.GetSelectedSite().url} target={'_blank'} rel={'noreferrer'}><strong>{this.GetSelectedSite().title}</strong></a>
         </p>
         <TabList selectedValue={this.state.selectedTabValue} onTabSelect={this.onTabSelect}>
-          <Tab value="tab1">Broken Links Analysis</Tab>
-          <Tab value="tab2">Library Analysis</Tab>
+          <Tab value="tab1">{strings.BrokenLinksAnalysisTab}</Tab>
+          <Tab value="tab2">{strings.LibraryAnalysisTab}</Tab>
         </TabList> </> }
 
         {this.state.selectedTabValue === 'tab2' && (
           <div id="Register1" className={styles.row}>            
             <div className={`${styles.row} ${styles.libraryCommands}`}> 
               <div className={styles['col-sm5']}>    
-                <Field label="Select a date" orientation="horizontal" >
+                <Field label={strings.SelectDateLabel} orientation="horizontal" >
                   <DatePicker 
                     value={this.state.dateStartDate}
                     minDate={new Date(2000,0,1)}
                     maxDate={new Date()}
-                    placeholder="Select a query date..." 
+                    placeholder={strings.SelectQueryDatePlaceholder} 
                     onSelectDate={(selectedDate:Date|undefined) => this.setState(
                       {dateStartDate: selectedDate}
                     )}
@@ -314,19 +321,19 @@ export default class ContentHealthManager extends React.Component<IContentHealth
               </div>
               <div className={`${styles['col-sm7']} ${styles.libraryCommandsLeft}`}>    
                 <Button onClick={() => this.StartQueryLstAndLibraries()} disabled={this.state.isQueryingLibraries}>
-                  {!this.state.selectedLibrary && <span>Query all libraries</span>}
-                  {this.state.selectedLibrary && <span>Query library</span>}
+                  {!this.state.selectedLibrary && <span>{strings.QueryAllLibraries}</span>}
+                  {this.state.selectedLibrary && <span>{strings.QueryLibrary}</span>}
                 </Button>
                 
                 
                 {this.state.isQueryingLibraries && <Spinner size="tiny" className={styles.progressSpinner} />}
                 &nbsp;
-                <Button onClick={() => this.StartQueryCheckedOutItems()}>Checked-out items</Button>                                
+                <Button onClick={() => this.StartQueryCheckedOutItems()}>{strings.CheckedOutItems}</Button>                                
               </div>
             </div>
             <div className={`${styles.row} ${styles.libraryCommands}`}> 
                 <div className={styles['col-sm4']}>
-                  <Button onClick={() => this.ShowLibraryReport()} disabled={!this.state.selectedLibrary}>Open details</Button>
+                  <Button onClick={() => this.ShowLibraryReport()} disabled={!this.state.selectedLibrary}>{strings.OpenDetails}</Button>
                 </div>
                 
                 <div className={`${styles['col-sm8']} ${styles.checkboxContainer}`}>
@@ -340,7 +347,7 @@ export default class ContentHealthManager extends React.Component<IContentHealth
                         }); 
                       }
                     }
-                    label="Libraries"
+                    label={strings.LibrariesCheckbox}
                   />
                   <Checkbox 
                     checked={this.state.chkShowLists}
@@ -352,7 +359,7 @@ export default class ContentHealthManager extends React.Component<IContentHealth
                         });                        
                       }
                     }
-                    label="Lists"
+                    label={strings.ListsCheckbox}
                   />  
                 </div>
             </div>
@@ -370,12 +377,12 @@ export default class ContentHealthManager extends React.Component<IContentHealth
           <div className={`${styles.row} ${styles.libraryCommands}`}> 
             <div className={`${styles['col-sm12']} ${styles.libraryCommandsLeft}`}>              
               <Button onClick={() => this.StartBrokenLinkProcess()} disabled={this.state.isProcessingBrokenLinks}>
-                {!this.state.selectedPage && <span>Find broken links</span>}
-                {this.state.selectedPage && <span>Process page</span>}
+                {!this.state.selectedPage && <span>{strings.FindBrokenLinks}</span>}
+                {this.state.selectedPage && <span>{strings.ProcessPage}</span>}
               </Button>
               {this.state.isProcessingBrokenLinks && <Spinner size="tiny" className={styles.progressSpinner} />}
               &nbsp;
-              <Button onClick={() => this.ShowPageReport()} disabled={!this.state.selectedPage}>Open details</Button>
+              <Button onClick={() => this.ShowPageReport()} disabled={!this.state.selectedPage}>{strings.OpenDetails}</Button>
             </div>
           </div>
           <ListView                
@@ -390,24 +397,38 @@ export default class ContentHealthManager extends React.Component<IContentHealth
         <Dialog open={!!this.state.isReportOpen} onOpenChange={(_: any, data: any) => this.setState({ isReportOpen: !!data.open })} modalType={'alert'}>
           <DialogSurface>
             <DialogBody>
-              <DialogTitle>Page report</DialogTitle>
+              <DialogTitle>{strings.PageReportTitle}</DialogTitle>
               <DialogContent style={{ padding: 12 }}>
                 {this.state.selectedPage ? (
                   <div>
-                    <div><strong>Title:</strong> {this.state.selectedPage.title || this.state.selectedPage.name}</div>
-                    <div><strong>URL:</strong> <a href={this.state.selectedPage.webUrl} target={'_blank'} rel={'noreferrer'}>{this.state.selectedPage.webUrl}</a></div>
+                    <div><strong>{strings.TitleLabel}</strong> {this.state.selectedPage.title || this.state.selectedPage.name}</div>
+                    <div><strong>{strings.UrlLabel}</strong> <a href={this.state.selectedPage.webUrl} target={'_blank'} rel={'noreferrer'}>{this.state.selectedPage.webUrl}</a></div>
                     {(() => {
                       const entry = this.state.pageResults.filter((x: PageResult) => x.pageID === this.state.selectedPage!.id)[0];
                       if (entry) {
                         return (
                           <div style={{ marginTop: 8 }}>
-                            <div><strong>Total links:</strong> {entry.Links.length}</div>
-                            <div><strong>Broken links:</strong> {entry.Links.filter((l: LinkInfo) => l.IsBroken).length}</div>
+                            <div><strong>{strings.TotalLinksLabel}</strong> {entry.Links.length}</div>
+                            <div><strong>{strings.BrokenLinksLabel}</strong> {entry.Links.filter((l: LinkInfo) => l.IsBroken).length}</div>
                             <div style={{ marginTop: 12 }}>
-                              <div><strong>All Links:</strong></div>
+                              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '8px' }}>
+                                <div><strong>{strings.AllLinksLabel}</strong></div>
+                                <Toggle
+                                  checked={this.state.showOnlyBrokenLinks}
+                                  onChange={(ev, checked?: boolean) => {
+                                    this.setState({ showOnlyBrokenLinks: checked || false });
+                                  }}
+                                  label={strings.ShowOnlyBrokenLinks}
+                                  inlineLabel={true}
+                                />
+                              </div>
                               <div style={{ maxHeight: '300px', overflowY: 'auto', marginTop: 8, border: '1px solid #ccc', padding: 8 }}>
-                                {entry.Links.length > 0 ? (
-                                  entry.Links.map((link: LinkInfo, index: number) => (
+                                {(() => {
+                                  const filteredLinks = this.state.showOnlyBrokenLinks 
+                                    ? entry.Links.filter((l: LinkInfo) => l.IsBroken)
+                                    : entry.Links;
+                                  return filteredLinks.length > 0 ? (
+                                    filteredLinks.map((link: LinkInfo, index: number) => (
                                     <div key={index} style={{ 
                                       padding: '8px', 
                                       marginBottom: '4px', 
@@ -425,23 +446,23 @@ export default class ContentHealthManager extends React.Component<IContentHealth
                                         </span>
                                       </div>
                                       <div style={{ marginTop: '4px' }}>
-                                        <div><strong>Title:</strong> {link.title || 'No title'}</div>
-                                        <div><strong>URL:</strong> 
+                                        <div><strong>{strings.TitleLabel}</strong> {link.title || strings.NoTitle}</div>
+                                        <div><strong>{strings.UrlLabel}</strong> 
                                           <a href={link.url} target="_blank" rel="noopener noreferrer" style={{ marginLeft: '4px', color: '#0078d4' }}>
-                                          {link.title || 'No title'}
+                                          {link.title || strings.NoTitle}
                                           </a>
                                         </div>
                                         {link.Content && link.Content.trim().length > 0 && (
                                           <div style={{ marginTop: '8px' }}>
                                             <button
                                               onClick={() => {
-                                                const currentExpanded = this.state.expandedContentSections || new Set<number>();
-                                                const expanded = new Set<number>();
+                                                const currentExpanded = this.state.expandedContentSections || new Set<string>();
+                                                const expanded = new Set<string>();
                                                 currentExpanded.forEach(val => expanded.add(val));
-                                                if (expanded.has(index)) {
-                                                  expanded.delete(index);
+                                                if (expanded.has(link.url)) {
+                                                  expanded.delete(link.url);
                                                 } else {
-                                                  expanded.add(index);
+                                                  expanded.add(link.url);
                                                 }
                                                 this.setState({ expandedContentSections: expanded });
                                               }}
@@ -457,10 +478,10 @@ export default class ContentHealthManager extends React.Component<IContentHealth
                                                 fontSize: '14px'
                                               }}
                                             >
-                                              {((this.state.expandedContentSections || new Set<number>()).has(index) ? <ChevronUp24Regular /> : <ChevronDown24Regular />)}
-                                              <span>Show Content</span>
+                                              {((this.state.expandedContentSections || new Set<string>()).has(link.url) ? <ChevronUp24Regular /> : <ChevronDown24Regular />)}
+                                              <span>{strings.ShowContent}</span>
                                             </button>
-                                            {(this.state.expandedContentSections || new Set<number>()).has(index) && (
+                                            {(this.state.expandedContentSections || new Set<string>()).has(link.url) && (
                                               <div
                                                 style={{
                                                   marginTop: '8px',
@@ -478,26 +499,35 @@ export default class ContentHealthManager extends React.Component<IContentHealth
                                         )}
                                       </div>
                                     </div>
-                                  ))
-                                ) : (
-                                  <div style={{ padding: '8px', color: '#666', fontStyle: 'italic' }}>
-                                    No links found on this page.
-                                  </div>
-                                )}
+                                    ))
+                                  ) : null;
+                                })()}
+                                {(() => {
+                                  const filteredLinks = this.state.showOnlyBrokenLinks 
+                                    ? entry.Links.filter((l: LinkInfo) => l.IsBroken)
+                                    : entry.Links;
+                                  return filteredLinks.length === 0 ? (
+                                    <div style={{ padding: '8px', color: '#666', fontStyle: 'italic' }}>
+                                      {this.state.showOnlyBrokenLinks 
+                                        ? strings.NoBrokenLinksFound
+                                        : strings.NoLinksFound}
+                                    </div>
+                                  ) : null;
+                                })()}
                               </div>
                             </div>
                           </div>
                         );
                       }
-                      return <div style={{ marginTop: 8 }}>No link analysis available.</div>;
+                      return <div style={{ marginTop: 8 }}>{strings.NoLinkAnalysisAvailable}</div>;
                     })()}
                   </div>
                 ) : (
-                  <div>No item selected.</div>
+                  <div>{strings.NoItemSelected}</div>
                 )}
               </DialogContent>
               <DialogActions>
-                <Button appearance={'secondary'} onClick={() => this.setState({ isReportOpen: false })}>Close</Button>
+                <Button appearance={'secondary'} onClick={() => this.setState({ isReportOpen: false })}>{strings.CloseButton}</Button>
               </DialogActions>
             </DialogBody>
           </DialogSurface>
@@ -506,36 +536,36 @@ export default class ContentHealthManager extends React.Component<IContentHealth
         <Dialog open={!!this.state.isLibraryReportOpen} onOpenChange={(_: any, data: any) => this.setState({ isLibraryReportOpen: !!data.open })} modalType={'alert'}>
           <DialogSurface>
             <DialogBody>
-              <DialogTitle>Library report</DialogTitle>
+              <DialogTitle>{strings.LibraryReportTitle}</DialogTitle>
               <DialogContent style={{ padding: 12 }}>
                 {this.state.selectedLibrary ? (
                   <div>
-                    <div><strong>Title:</strong> {this.state.selectedLibrary.Title || 'N/A'}</div>
-                    <div><strong>Template:</strong> {ListTemplateType[this.state.selectedLibrary.BaseTemplate] || 'N/A'}</div>
-                    <div><strong>Description:</strong> {this.state.selectedLibrary.Description || 'N/A'}</div>
-                    <div><strong>Item Count:</strong> {this.state.selectedLibrary.ItemCount}</div>
-                    <div><strong>Created:</strong> {new Date(this.state.selectedLibrary.Created).toLocaleDateString()}</div>
-                    <div><strong>Last Modified:</strong> {new Date(this.state.selectedLibrary.LastItemModifiedDate).toLocaleString()}</div>
-                    <div><strong>Last User Modified:</strong> {new Date(this.state.selectedLibrary.LastItemUserModifiedDate).toLocaleString()}</div>
+                    <div><strong>{strings.TitleLabel}</strong> {this.state.selectedLibrary.Title || strings.NA}</div>
+                    <div><strong>{strings.TemplateLabel}</strong> {ListTemplateType[this.state.selectedLibrary.BaseTemplate] || strings.NA}</div>
+                    <div><strong>{strings.DescriptionLabel}</strong> {this.state.selectedLibrary.Description || strings.NA}</div>
+                    <div><strong>{strings.ItemCountLabel}</strong> {this.state.selectedLibrary.ItemCount}</div>
+                    <div><strong>{strings.CreatedLabel}</strong> {new Date(this.state.selectedLibrary.Created).toLocaleDateString()}</div>
+                    <div><strong>{strings.LastModifiedLabel}</strong> {new Date(this.state.selectedLibrary.LastItemModifiedDate).toLocaleString()}</div>
+                    <div><strong>{strings.LastUserModifiedLabel}</strong> {new Date(this.state.selectedLibrary.LastItemUserModifiedDate).toLocaleString()}</div>
                     {this.state.selectedLibrary.LastItemDeletedDate && (
-                      <div><strong>Last Deleted:</strong> {new Date(this.state.selectedLibrary.LastItemDeletedDate).toLocaleString()}</div>
+                      <div><strong>{strings.LastDeletedLabel}</strong> {new Date(this.state.selectedLibrary.LastItemDeletedDate).toLocaleString()}</div>
                     )}
-                    <div><strong>Enable Versioning:</strong> {this.state.selectedLibrary.EnableVersioning ? 'Yes' : 'No'}</div>
-                    <div><strong>Enable Attachments:</strong> {this.state.selectedLibrary.EnableAttachments ? 'Yes' : 'No'}</div>
-                    <div><strong>Enable Folder Creation:</strong> {this.state.selectedLibrary.EnableFolderCreation ? 'Yes' : 'No'}</div>
+                    <div><strong>{strings.EnableVersioningLabel}</strong> {this.state.selectedLibrary.EnableVersioning ? strings.Yes : strings.No}</div>
+                    <div><strong>{strings.EnableAttachmentsLabel}</strong> {this.state.selectedLibrary.EnableAttachments ? strings.Yes : strings.No}</div>
+                    <div><strong>{strings.EnableFolderCreationLabel}</strong> {this.state.selectedLibrary.EnableFolderCreation ? strings.Yes : strings.No}</div>
                     
                     <div style={{ marginTop: 16 }}>
-                      <h4>Overview list entries</h4>
+                      <h4>{strings.OverviewListEntries}</h4>
                       {this.state.selectedLibrary.FoundItems && this.state.selectedLibrary.FoundItems.length > 0 ? (
                         <div>
-                          <div><strong>Total items found:</strong> {this.state.selectedLibrary.FoundItems.length}</div>
+                          <div><strong>{strings.TotalItemsFound}</strong> {this.state.selectedLibrary.FoundItems.length}</div>
                           <Button 
                             onClick={this.onShowPermissionsClick}
                             disabled={!this.state.selectedFoundItem}
                             appearance="secondary"
                             style={{ marginBottom: '8px' }}
                           >
-                            Show Permissions
+                            {strings.ShowPermissions}
                           </Button>
                           <div style={{ marginTop: 8, maxHeight: '300px' }}>
                             <ListView                
@@ -549,17 +579,17 @@ export default class ContentHealthManager extends React.Component<IContentHealth
                         </div>
                       ) : (
                         <div style={{ padding: '16px', backgroundColor: '#f5f5f5', border: '1px solid #ddd', borderRadius: '4px', textAlign: 'center' }}>
-                          <p style={{ margin: 0, color: '#666' }}>Query the library for results</p>
+                          <p style={{ margin: 0, color: '#666' }}>{strings.QueryLibraryForResults}</p>
                         </div>
                       )}
                     </div>
                   </div>
                 ) : (
-                  <div>No library selected.</div>
+                  <div>{strings.NoLibrarySelected}</div>
                 )}
               </DialogContent>
               <DialogActions>
-                <Button appearance={'secondary'} onClick={() => this.setState({ isLibraryReportOpen: false })}>Close</Button>
+                <Button appearance={'secondary'} onClick={() => this.setState({ isLibraryReportOpen: false })}>{strings.CloseButton}</Button>
               </DialogActions>
             </DialogBody>
           </DialogSurface>

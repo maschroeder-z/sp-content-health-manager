@@ -11,6 +11,84 @@ declare interface IContentHealthManagerWebPartStrings {
   AppOfficeEnvironment: string;
   AppOutlookEnvironment: string;
   UnknownEnvironment: string;
+  // Content Health Manager
+  ContentHealthManagerTitle: string;
+  ContentHealthManagerDescription: string;
+  HowToUseHeading: string;
+  FirstSelectSites: string;
+  SecondSelectSingleSite: string;
+  StartQueryToFind: string;
+  BrokenLinksInPages: string;
+  OldContentForDate: string;
+  CheckedOutContentItems: string;
+  // Site Selection
+  SelectFirstAllSites: string;
+  SelectSitesLabel: string;
+  SelectAllSitesPlaceholder: string;
+  FilterSitesPlaceholder: string;
+  ToContinueSelectSite: string;
+  ChooseSiteLabel: string;
+  SelectSitePlaceholder: string;
+  ResultsForSite: string;
+  // Tabs
+  BrokenLinksAnalysisTab: string;
+  LibraryAnalysisTab: string;
+  // Library Analysis
+  SelectDateLabel: string;
+  SelectQueryDatePlaceholder: string;
+  QueryAllLibraries: string;
+  QueryLibrary: string;
+  CheckedOutItems: string;
+  OpenDetails: string;
+  LibrariesCheckbox: string;
+  ListsCheckbox: string;
+  // Broken Links Analysis
+  FindBrokenLinks: string;
+  ProcessPage: string;
+  // Page Report Dialog
+  PageReportTitle: string;
+  TitleLabel: string;
+  UrlLabel: string;
+  TotalLinksLabel: string;
+  BrokenLinksLabel: string;
+  AllLinksLabel: string;
+  ShowOnlyBrokenLinks: string;
+  NoTitle: string;
+  ShowContent: string;
+  NoBrokenLinksFound: string;
+  NoLinksFound: string;
+  NoLinkAnalysisAvailable: string;
+  NoItemSelected: string;
+  CloseButton: string;
+  // Library Report Dialog
+  LibraryReportTitle: string;
+  TemplateLabel: string;
+  DescriptionLabel: string;
+  ItemCountLabel: string;
+  CreatedLabel: string;
+  LastModifiedLabel: string;
+  LastUserModifiedLabel: string;
+  LastDeletedLabel: string;
+  EnableVersioningLabel: string;
+  EnableAttachmentsLabel: string;
+  EnableFolderCreationLabel: string;
+  OverviewListEntries: string;
+  TotalItemsFound: string;
+  ShowPermissions: string;
+  QueryLibraryForResults: string;
+  NoLibrarySelected: string;
+  Yes: string;
+  No: string;
+  NA: string;
+  // View Fields
+  FoundLabel: string;
+  StartQueryForResults: string;
+  CreatedAtLabel: string;
+  LastChangeLabel: string;
+  UserChangedLabel: string;
+  LastDeletionLabel: string;
+  FoundLinksCount: string;
+  BrokenLinksCount: string;
 }
 
 declare module 'ContentHealthManagerWebPartStrings' {

@@ -12,17 +12,16 @@ export class PageProcessing
             return null;
         }
 
-        let links :  LinkInfo[] = [];
+        let links :  LinkInfo[] = [];        
         for (const section of canvas.horizontalSections || []) {
             for (const column of section.columns || []) {
                 for (const webpart of column.webparts || []) {
-                    if (webpart.innerHtml && typeof webpart.innerHtml === 'string' && webpart.innerHtml.trim().length > 0) {                        
+                    if (webpart.innerHtml && typeof webpart.innerHtml === 'string' && webpart.innerHtml.trim().length > 0) {                          
                         links=links.concat(this.ExtractLinksFromContent(webpart.innerHtml));
                     }
                     if (typeof webpart.data !== "undefined" && webpart.data !== null)
                     {   
-                        const propTitle = (webpart.data.properties as any).Titel !== "undefined" ? (webpart.data.properties as any).Titel : ((webpart.data.properties as any).Title !== "undefined" ? (webpart.data.properties as any).Title : "-");
-                        console.log(webpart.data,webpart.data?.serverProcessedContent.links);
+                        const propTitle = (webpart.data.properties as any).Titel !== "undefined" ? (webpart.data.properties as any).Titel : ((webpart.data.properties as any).Title !== "undefined" ? (webpart.data.properties as any).Title : "-");                        
                         for (const link of webpart.data?.serverProcessedContent.links!) {                            
                             links.push({
                                 IsBroken: false,
@@ -31,7 +30,7 @@ export class PageProcessing
                                 Content: ""
                             });                            
                         }
-                    }
+                    }                    
                 }
             }
         }
