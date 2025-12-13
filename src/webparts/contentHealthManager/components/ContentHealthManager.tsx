@@ -11,7 +11,7 @@ import { PageProcessing } from '../../../Core/PageProcessing';
 import { Page } from '../../../models/Page';
 import { PageResult } from '../../../models/PageResult';
 import type { LinkInfo } from '../../../models/LinkInfo';
-import { CheckmarkCircleColor, CheckmarkCircleHintRegular, FlagPrideIntersexInclusiveProgressFilled, QuestionCircleColor, WarningColor, Search24Regular, DataTrending24Regular, List24Regular, Link24Regular, Clock24Regular, LockClosed24Regular } from "@fluentui/react-icons";
+import { CheckmarkCircleColor, CheckmarkCircleHintRegular, FlagPrideIntersexInclusiveProgressFilled, QuestionCircleColor, WarningColor, Search24Regular, DataTrending24Regular, List24Regular, Link24Regular, Clock24Regular, LockClosed24Regular, ChevronDown24Regular, ChevronUp24Regular } from "@fluentui/react-icons";
 import { ListInformation } from '../../../models/REST/ListInformation';
 import { FieldDateRenderer,FieldTextRenderer } from '@pnp/spfx-controls-react';
 import { ListTemplateType } from '../../../Core/ListTemplateTypes';
@@ -33,6 +33,8 @@ interface IContentHealthManagerState {
   chkShowLibaries: boolean;
   selectedFoundItem?: any | null;
   isQueryingLibraries?: boolean;
+  isProcessingBrokenLinks?: boolean;
+  expandedContentSections: Set<number>;
 }
 
 export default class ContentHealthManager extends React.Component<IContentHealthManagerProps, IContentHealthManagerState> {
@@ -191,7 +193,9 @@ export default class ContentHealthManager extends React.Component<IContentHealth
       chkShowLibaries: true,
       chkShowLists: true,
       selectedFoundItem: null,
-      isQueryingLibraries: false
+      isQueryingLibraries: false,
+      isProcessingBrokenLinks: false,
+      expandedContentSections: new Set<number>()
     };
     this.dataManager = new GraphDataManager(this.props.msGraphClientFactory, this.props.spHTTPClient);
   }
@@ -360,7 +364,11 @@ export default class ContentHealthManager extends React.Component<IContentHealth
           <div id="Register2" className={styles.row}>
           <div className={`${styles.row} ${styles.libraryCommands}`}> 
             <div className={`${styles['col-sm12']} ${styles.libraryCommandsLeft}`}>              
-              <Button onClick={() => this.StartBrokenLinkProcess()}>Find Broken Links</Button>
+              <Button onClick={() => this.StartBrokenLinkProcess()} disabled={this.state.isProcessingBrokenLinks}>
+                {!this.state.selectedPage && <span>Find broken links</span>}
+                {this.state.selectedPage && <span>Process page</span>}
+              </Button>
+              {this.state.isProcessingBrokenLinks && <Spinner size="tiny" className={styles.progressSpinner} />}
               &nbsp;
               <Button onClick={() => this.ShowPageReport()} disabled={!this.state.selectedPage}>Open details</Button>
             </div>
@@ -415,9 +423,54 @@ export default class ContentHealthManager extends React.Component<IContentHealth
                                         <div><strong>Title:</strong> {link.title || 'No title'}</div>
                                         <div><strong>URL:</strong> 
                                           <a href={link.url} target="_blank" rel="noopener noreferrer" style={{ marginLeft: '4px', color: '#0078d4' }}>
-                                            {link.url}
+                                          {link.title || 'No title'}
                                           </a>
                                         </div>
+                                        {link.Content && link.Content.trim().length > 0 && (
+                                          <div style={{ marginTop: '8px' }}>
+                                            <button
+                                              onClick={() => {
+                                                const currentExpanded = this.state.expandedContentSections || new Set<number>();
+                                                const expanded = new Set<number>();
+                                                currentExpanded.forEach(val => expanded.add(val));
+                                                if (expanded.has(index)) {
+                                                  expanded.delete(index);
+                                                } else {
+                                                  expanded.add(index);
+                                                }
+                                                this.setState({ expandedContentSections: expanded });
+                                              }}
+                                              style={{
+                                                display: 'flex',
+                                                alignItems: 'center',
+                                                gap: '4px',
+                                                background: 'none',
+                                                border: 'none',
+                                                cursor: 'pointer',
+                                                color: '#0078d4',
+                                                padding: '4px 0',
+                                                fontSize: '14px'
+                                              }}
+                                            >
+                                              {((this.state.expandedContentSections || new Set<number>()).has(index) ? <ChevronUp24Regular /> : <ChevronDown24Regular />)}
+                                              <span>Show Content</span>
+                                            </button>
+                                            {(this.state.expandedContentSections || new Set<number>()).has(index) && (
+                                              <div
+                                                style={{
+                                                  marginTop: '8px',
+                                                  padding: '8px',
+                                                  backgroundColor: '#f9f9f9',
+                                                  border: '1px solid #e0e0e0',
+                                                  borderRadius: '4px',
+                                                  maxHeight: '300px',
+                                                  overflowY: 'auto'
+                                                }}
+                                                dangerouslySetInnerHTML={{ __html: link.Content }}
+                                              />
+                                            )}
+                                          </div>
+                                        )}
                                       </div>
                                     </div>
                                   ))
@@ -542,6 +595,8 @@ export default class ContentHealthManager extends React.Component<IContentHealth
       return;
     }
 
+    this.setState({ isProcessingBrokenLinks: true });
+
     console.log(`Starting broken link process for site: ${this.state.selectedSiteId}`);
     console.log(`Processing ${this.state.pageEntries.length} pages...`);
 
@@ -549,33 +604,46 @@ export default class ContentHealthManager extends React.Component<IContentHealth
     const pageAnalyzer = new PageProcessing();
     try {
       // Iterate over all page entries and get their full content
-      for (const pageEntry of this.state.pageEntries) {
-        try {
-          console.log(`Processing page: ${pageEntry.title || pageEntry.name} (ID: ${pageEntry.InProgress})`);
-          
-          // Get the full page content using GetPageContent method
-          const fullPageContent = await this.dataManager.GetPageContent(this.state.selectedSiteId, pageEntry.id);
-                    
-          // TODO: Add broken link detection logic here
-          const resultLinks = await pageAnalyzer.AnalyzePageContent(fullPageContent.canvasLayout!);          
-          this.state.pageResults.push({
-            pageID: pageEntry.id,
-            Links: resultLinks!
-          });
-          
-          this.setState({
-            pageEntries: this.state.pageEntries
-          })
-          
-        } catch (error) {
-          console.error(`Error processing page ${pageEntry.title || pageEntry.name}:`, error);
-        }
-      }            
+      
+      if (this.state.selectedPage) {
+        const fullPageContent = await this.dataManager.GetPageContent(this.state.selectedSiteId, this.state.selectedPage.id);
+        const resultLinks = await pageAnalyzer.AnalyzePageContent(fullPageContent.canvasLayout!);
+        this.state.pageResults.push({
+          pageID: this.state.selectedPage.id,
+          Links: resultLinks!
+        });
+      }
+      else {
+        for (const pageEntry of this.state.pageEntries) {
+          try {
+            console.log(`Processing page: ${pageEntry.title || pageEntry.name} (ID: ${pageEntry.InProgress})`);
+            
+            // Get the full page content using GetPageContent method
+            const fullPageContent = await this.dataManager.GetPageContent(this.state.selectedSiteId, pageEntry.id);
+                      
+            // TODO: Add broken link detection logic here
+            const resultLinks = await pageAnalyzer.AnalyzePageContent(fullPageContent.canvasLayout!);          
+            this.state.pageResults.push({
+              pageID: pageEntry.id,
+              Links: resultLinks!
+            });
+            
+            this.setState({
+              pageEntries: this.state.pageEntries
+            })
+            
+          } catch (error) {
+            console.error(`Error processing page ${pageEntry.title || pageEntry.name}:`, error);
+          }
+        }    
+      }        
       /*this.setState({
         pageEntries: this.state.pageEntries
       })*/
     } catch (error) {
       console.error('Error during broken link process:', error);
+    } finally {
+      this.setState({ isProcessingBrokenLinks: false });
     }
   }
 

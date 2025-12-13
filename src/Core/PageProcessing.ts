@@ -16,7 +16,7 @@ export class PageProcessing
         for (const section of canvas.horizontalSections || []) {
             for (const column of section.columns || []) {
                 for (const webpart of column.webparts || []) {
-                    if (webpart.innerHtml && typeof webpart.innerHtml === 'string' && webpart.innerHtml.trim().length > 0) {
+                    if (webpart.innerHtml && typeof webpart.innerHtml === 'string' && webpart.innerHtml.trim().length > 0) {                        
                         links=links.concat(this.ExtractLinksFromContent(webpart.innerHtml));
                     }
                     if (typeof webpart.data !== "undefined" && webpart.data !== null)
@@ -27,7 +27,8 @@ export class PageProcessing
                             links.push({
                                 IsBroken: false,
                                 title: `${webpart.data.title} / (${propTitle}) -> ${link.key}`,
-                                url: link.value
+                                url: link.value,
+                                Content: ""
                             });                            
                         }
                     }
@@ -98,7 +99,7 @@ export class PageProcessing
             if (lower.indexOf('javascript:') === 0 || lower.indexOf('mailto:') === 0) { continue; }
 
             const title = this.stripHtml(innerHtml).trim();
-            results.push({ url, title, IsBroken: true });
+            results.push({ url, title, IsBroken: true, Content: content });
         }
 
         return results;
