@@ -22,13 +22,15 @@ export class PageProcessing
                     if (typeof webpart.data !== "undefined" && webpart.data !== null)
                     {   
                         const propTitle = (webpart.data.properties as any).Titel !== "undefined" ? (webpart.data.properties as any).Titel : ((webpart.data.properties as any).Title !== "undefined" ? (webpart.data.properties as any).Title : "-");                        
-                        for (const link of webpart.data?.serverProcessedContent.links!) {                            
-                            links.push({
-                                IsBroken: false,
-                                title: `${webpart.data.title} / (${propTitle}) -> ${link.key}`,
-                                url: link.value,
-                                Content: ""
-                            });                            
+                        if (webpart.data?.serverProcessedContent.links) {
+                            for (const link of webpart.data.serverProcessedContent.links) {                            
+                                links.push({
+                                    IsBroken: false,
+                                    title: `${webpart.data.title} / (${propTitle}) -> ${link.key}`,
+                                    url: link.value,
+                                    Content: ""
+                                });                            
+                            }
                         }
                     }                    
                 }

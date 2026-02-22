@@ -1,0 +1,1 @@
+{"version":3,"file":"PageResult.js","sourceRoot":"","sources":["../../src/models/PageResult.ts"],"names":[],"mappings":"","sourcesContent":["import { LinkInfo } from \"./LinkInfo\";\r\n\r\nexport interface PageResult\r\n{\r\n    pageID: string;\r\n    Links: LinkInfo[];\r\n}"]}

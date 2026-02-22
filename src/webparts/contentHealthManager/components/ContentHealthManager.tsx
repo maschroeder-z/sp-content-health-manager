@@ -26,7 +26,7 @@ interface IContentHealthManagerState {
   pageResults: PageResult[];  
   isReportOpen?: boolean;
   selectedPage?: Page | null;
-  dateStartDate: Date |  undefined;
+  dateStartDate: Date |  undefined | null;
   isLibraryReportOpen?: boolean;
   selectedLibrary?: ListInformation | null;
   selectedTabValue: TabValue;
@@ -257,7 +257,7 @@ export default class ContentHealthManager extends React.Component<IContentHealth
             {this.state.SelectedSites.length === 0 && <p className={styles.infoMessage}><QuestionCircleColor />{strings.SelectFirstAllSites}</p>}            
             <Field label={strings.SelectSitesLabel}>
               <SitePicker
-                context={this.props.wpContext}              
+                context={this.props.wpContext as any}              
                 mode={'site'}         
                 selectedSites={this.tempSelectedSites}       
                 allowSearch={true}
@@ -309,11 +309,11 @@ export default class ContentHealthManager extends React.Component<IContentHealth
               <div className={styles['col-sm5']}>    
                 <Field label={strings.SelectDateLabel} orientation="horizontal" >
                   <DatePicker 
-                    value={this.state.dateStartDate}
+                    value={this.state.dateStartDate as Date | undefined}
                     minDate={new Date(2000,0,1)}
                     maxDate={new Date()}
                     placeholder={strings.SelectQueryDatePlaceholder} 
-                    onSelectDate={(selectedDate:Date|undefined) => this.setState(
+                    onSelectDate={(selectedDate:Date|undefined|null) => this.setState(
                       {dateStartDate: selectedDate}
                     )}
                   />
@@ -339,11 +339,11 @@ export default class ContentHealthManager extends React.Component<IContentHealth
                 <div className={`${styles['col-sm8']} ${styles.checkboxContainer}`}>
                   <Checkbox
                     checked={this.state.chkShowLibaries}
-                    onChange={async (ev, checked: boolean) => {                                              
-                        const libraries = await this.dataManager.GetAllLists(this.GetSelectedSite().url, this.state.chkShowLists, checked);
+                    onChange={async (ev, checked: boolean | undefined) => {                                              
+                        const libraries = await this.dataManager.GetAllLists(this.GetSelectedSite().url, this.state.chkShowLists, checked || false);
                         this.setState({ 
                           libraryEntries: libraries,
-                          chkShowLibaries: checked
+                          chkShowLibaries: checked || false
                         }); 
                       }
                     }
@@ -351,11 +351,11 @@ export default class ContentHealthManager extends React.Component<IContentHealth
                   />
                   <Checkbox 
                     checked={this.state.chkShowLists}
-                    onChange={async (ev, checked: boolean) => {                    
-                        const libraries = await this.dataManager.GetAllLists(this.GetSelectedSite().url, checked, this.state.chkShowLibaries);
+                    onChange={async (ev, checked: boolean | undefined) => {                    
+                        const libraries = await this.dataManager.GetAllLists(this.GetSelectedSite().url, checked || false, this.state.chkShowLibaries);
                         this.setState({ 
                           libraryEntries: libraries,
-                          chkShowLists: checked
+                          chkShowLists: checked || false
                         });                        
                       }
                     }
@@ -733,7 +733,7 @@ export default class ContentHealthManager extends React.Component<IContentHealth
   }
 
   private async StartQueryCheckedOutItems(): Promise<void> {
-    this.GetCheckedOutItems();
+    await this.GetCheckedOutItems();
   }
 
   public async GetPermission4SelectedItem(site: Site, listID: string, listItemID: string): Promise<void> {

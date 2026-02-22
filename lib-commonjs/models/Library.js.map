@@ -1,0 +1,1 @@
+{"version":3,"file":"Library.js","sourceRoot":"","sources":["../../src/models/Library.ts"],"names":[],"mappings":"","sourcesContent":["export interface Library {\r\n    \"@odata.etag\": string\r\n    createdDateTime: string\r\n    id: string\r\n    lastModifiedDateTime: string\r\n    name: string\r\n    webUrl: string\r\n    displayName: string\r\n  }\r\n  "]}

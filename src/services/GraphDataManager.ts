@@ -304,7 +304,7 @@ export class GraphDataManager {
         //const queryParam = `{'ViewXml':'${viewXml}'}`;
         
         // Construct the API URL
-  1     //const apiUrl = `${siteUrl}/_api/web/lists('${listID}')/GetItems(query=@v1)?@v1=${queryParam}&$expand=file`;
+        //const apiUrl = `${siteUrl}/_api/web/lists('${listID}')/GetItems(query=@v1)?@v1=${queryParam}&$expand=file`;
         const apiUrl = `${siteUrl}/_api/web/lists('${listID}')/GetItems?$expand=ParentList,File,ContentType`;
         
         const response = await this.spHTTPClient.post(

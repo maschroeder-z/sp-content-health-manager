@@ -1,0 +1,301 @@
+/*@import '~@fluentui/react/dist/sass/References.scss';
+https://learn.microsoft.com/en-us/sharepoint/dev/spfx/office-ui-fabric-integration
+*/
+/* themed tokens */
+/*
+  Your use of the content in the files referenced here is subject to the terms of the license at http://aka.ms/fabric-assets-license
+*/
+.row {
+  margin: 0 -8px;
+  box-sizing: border-box;
+  zoom: 1;
+  padding: 0px;
+}
+.row::before, .row::after {
+  display: table;
+  content: "";
+  line-height: 0;
+}
+.row::after {
+  clear: both;
+}
+
+.col-sm2 {
+  position: relative;
+  min-height: 1px;
+  padding-left: 8px;
+  padding-right: 8px;
+  box-sizing: border-box;
+  width: 16.6666666667%;
+}
+[dir=ltr] .col-sm2 {
+  float: left;
+}
+[dir=rtl] .col-sm2 {
+  float: right;
+}
+.col-sm2 .ms-Grid {
+  padding: 0;
+}
+
+.col-sm3 {
+  position: relative;
+  min-height: 1px;
+  padding-left: 8px;
+  padding-right: 8px;
+  box-sizing: border-box;
+  width: 25%;
+}
+[dir=ltr] .col-sm3 {
+  float: left;
+}
+[dir=rtl] .col-sm3 {
+  float: right;
+}
+.col-sm3 .ms-Grid {
+  padding: 0;
+}
+
+.col-sm4 {
+  position: relative;
+  min-height: 1px;
+  padding-left: 8px;
+  padding-right: 8px;
+  box-sizing: border-box;
+  width: 33.3333333333%;
+}
+[dir=ltr] .col-sm4 {
+  float: left;
+}
+[dir=rtl] .col-sm4 {
+  float: right;
+}
+.col-sm4 .ms-Grid {
+  padding: 0;
+}
+
+.col-sm5 {
+  position: relative;
+  min-height: 1px;
+  padding-left: 8px;
+  padding-right: 8px;
+  box-sizing: border-box;
+  width: 41.6666666667%;
+}
+[dir=ltr] .col-sm5 {
+  float: left;
+}
+[dir=rtl] .col-sm5 {
+  float: right;
+}
+.col-sm5 .ms-Grid {
+  padding: 0;
+}
+
+.col-sm6 {
+  position: relative;
+  min-height: 1px;
+  padding-left: 8px;
+  padding-right: 8px;
+  box-sizing: border-box;
+  width: 50%;
+}
+[dir=ltr] .col-sm6 {
+  float: left;
+}
+[dir=rtl] .col-sm6 {
+  float: right;
+}
+.col-sm6 .ms-Grid {
+  padding: 0;
+}
+
+.col-sm7 {
+  position: relative;
+  min-height: 1px;
+  padding-left: 8px;
+  padding-right: 8px;
+  box-sizing: border-box;
+  width: 58.3333333333%;
+}
+[dir=ltr] .col-sm7 {
+  float: left;
+}
+[dir=rtl] .col-sm7 {
+  float: right;
+}
+.col-sm7 .ms-Grid {
+  padding: 0;
+}
+
+.col-sm8 {
+  position: relative;
+  min-height: 1px;
+  padding-left: 8px;
+  padding-right: 8px;
+  box-sizing: border-box;
+  width: 66.6666666667%;
+}
+[dir=ltr] .col-sm8 {
+  float: left;
+}
+[dir=rtl] .col-sm8 {
+  float: right;
+}
+.col-sm8 .ms-Grid {
+  padding: 0;
+}
+
+.col-sm12 {
+  position: relative;
+  min-height: 1px;
+  padding-left: 8px;
+  padding-right: 8px;
+  box-sizing: border-box;
+  width: 100%;
+}
+[dir=ltr] .col-sm12 {
+  float: left;
+}
+[dir=rtl] .col-sm12 {
+  float: right;
+}
+.col-sm12 .ms-Grid {
+  padding: 0;
+}
+
+.libraryCommands {
+  padding: 8px 0 0 20px;
+}
+
+.libraryCommandsLeft {
+  text-align: right;
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 8px;
+}
+
+.progressSpinner {
+  margin-left: 4px;
+}
+
+.checkboxContainer {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 16px;
+}
+
+.contentHealthManager {
+  overflow: hidden;
+  padding: 1em;
+  color: "[theme:bodyText, default: #323130]";
+  color: var(--bodyText);
+}
+.contentHealthManager.teams {
+  font-family: "Segoe UI", -apple-system, BlinkMacSystemFont, "Roboto", "Helvetica Neue", sans-serif;
+}
+
+.sitePicker {
+  width: 100%;
+}
+
+.links a {
+  text-decoration: none;
+  color: "[theme:link, default:#03787c]";
+  color: var(--link);
+}
+.links a:hover {
+  text-decoration: underline;
+  color: "[theme:linkHovered, default: #014446]";
+  color: var(--linkHovered);
+}
+
+.infoMessage {
+  font-size: 16px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.infoMessage svg {
+  flex-shrink: 0;
+}
+
+.summarySection {
+  margin-bottom: 10px;
+  padding: 8px;
+  background-color: "[theme:neutralLighter, default: #f3f2f1]";
+  background-color: var(--neutralLighter);
+  border-radius: 4px;
+  border: 1px solid "[theme:neutralLight, default: #edebe9]";
+  border-color: var(--neutralLight);
+}
+
+.summaryDescription {
+  display: flex;
+  gap: 16px;
+  margin-bottom: 20px;
+}
+.summaryDescription h3 {
+  margin-top: 0;
+  margin-bottom: 8px;
+  font-size: 20px;
+  font-weight: 600;
+}
+.summaryDescription p {
+  margin: 0;
+  line-height: 1.5;
+  font-size: 14px;
+}
+
+.summaryIcon {
+  flex-shrink: 0;
+  width: 32px;
+  height: 32px;
+  color: "[theme:themePrimary, default: #0078d4]";
+  color: var(--themePrimary);
+  margin-top: 4px;
+}
+
+.inlineIcon {
+  display: inline-block;
+  vertical-align: middle;
+  width: 16px;
+  height: 16px;
+  margin-right: 6px;
+  margin-left: 2px;
+}
+
+.instructionsSection h4 {
+  margin-top: 0;
+  margin-bottom: 12px;
+  font-size: 16px;
+  font-weight: 600;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.stepList {
+  margin: 0;
+  padding-left: 24px;
+}
+.stepList li {
+  margin-bottom: 12px;
+  line-height: 1.6;
+}
+.stepList li strong {
+  font-weight: 600;
+}
+
+.subList {
+  margin-top: 8px;
+  margin-bottom: 0;
+  padding-left: 24px;
+  list-style-type: none;
+}
+.subList li {
+  margin-bottom: 6px;
+  line-height: 1.5;
+}

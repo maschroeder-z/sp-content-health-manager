@@ -1,0 +1,1 @@
+{"version":3,"file":"Site.js","sourceRoot":"","sources":["../../src/models/Site.ts"],"names":[],"mappings":"","sourcesContent":["export interface Site {\r\n  id: string;\r\n  title: string;\r\n  url: string;\r\n  webId: string;\r\n}\r\n\r\n\r\n"]}

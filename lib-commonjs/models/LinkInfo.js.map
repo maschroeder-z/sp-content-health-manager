@@ -1,0 +1,1 @@
+{"version":3,"file":"LinkInfo.js","sourceRoot":"","sources":["../../src/models/LinkInfo.ts"],"names":[],"mappings":"","sourcesContent":["export interface LinkInfo {\r\n    url: string;\r\n    title: string;\r\n    IsBroken: boolean;\r\n    Content: string;\r\n}"]}

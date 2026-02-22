@@ -36,9 +36,9 @@ export default class ContentHealthManagerWebPart extends BaseClientSideWebPart<I
       environmentMessage: this._environmentMessage,
       hasTeamsContext: !!this.context.sdks.microsoftTeams,
       userDisplayName: this.context.pageContext.user.displayName,
-      msGraphClientFactory: this.context.msGraphClientFactory,
+      msGraphClientFactory: this.context.msGraphClientFactory as any,
       wpContext: this.context,
-      spHTTPClient: this.context.spHttpClient
+      spHTTPClient: this.context.spHttpClient as any      
     });
 
 
