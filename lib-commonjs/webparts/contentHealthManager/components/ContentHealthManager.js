@@ -227,6 +227,7 @@ var ContentHealthManager = /** @class */ (function (_super) {
             chkShowLists: true,
             selectedFoundItem: null,
             isQueryingLibraries: false,
+            isFilteringLibraries: false,
             isProcessingBrokenLinks: false,
             expandedContentSections: new Set(),
             showOnlyBrokenLinks: false
@@ -318,36 +319,13 @@ var ContentHealthManager = /** @class */ (function (_super) {
                     React.createElement("div", { className: ContentHealthManager_module_scss_1.default['col-sm4'] },
                         React.createElement(react_components_1.Button, { onClick: function () { return _this.ShowLibraryReport(); }, disabled: !this.state.selectedLibrary }, strings.OpenDetails)),
                     React.createElement("div", { className: "".concat(ContentHealthManager_module_scss_1.default['col-sm8'], " ").concat(ContentHealthManager_module_scss_1.default.checkboxContainer) },
-                        React.createElement(react_1.Checkbox, { checked: this.state.chkShowLibaries, onChange: function (ev, checked) { return tslib_1.__awaiter(_this, void 0, void 0, function () {
-                                var libraries;
-                                return tslib_1.__generator(this, function (_a) {
-                                    switch (_a.label) {
-                                        case 0: return [4 /*yield*/, this.dataManager.GetAllLists(this.GetSelectedSite().url, this.state.chkShowLists, checked || false)];
-                                        case 1:
-                                            libraries = _a.sent();
-                                            this.setState({
-                                                libraryEntries: libraries,
-                                                chkShowLibaries: checked || false
-                                            });
-                                            return [2 /*return*/];
-                                    }
-                                });
-                            }); }, label: strings.LibrariesCheckbox }),
-                        React.createElement(react_1.Checkbox, { checked: this.state.chkShowLists, onChange: function (ev, checked) { return tslib_1.__awaiter(_this, void 0, void 0, function () {
-                                var libraries;
-                                return tslib_1.__generator(this, function (_a) {
-                                    switch (_a.label) {
-                                        case 0: return [4 /*yield*/, this.dataManager.GetAllLists(this.GetSelectedSite().url, checked || false, this.state.chkShowLibaries)];
-                                        case 1:
-                                            libraries = _a.sent();
-                                            this.setState({
-                                                libraryEntries: libraries,
-                                                chkShowLists: checked || false
-                                            });
-                                            return [2 /*return*/];
-                                    }
-                                });
-                            }); }, label: strings.ListsCheckbox }))),
+                        React.createElement(react_1.Checkbox, { checked: this.state.chkShowLibaries, disabled: this.state.isFilteringLibraries, onChange: function (ev, checked) {
+                                void _this.UpdateLibraryFilter(checked || false, _this.state.chkShowLists);
+                            }, label: strings.LibrariesCheckbox }),
+                        React.createElement(react_1.Checkbox, { checked: this.state.chkShowLists, disabled: this.state.isFilteringLibraries, onChange: function (ev, checked) {
+                                void _this.UpdateLibraryFilter(_this.state.chkShowLibaries, checked || false);
+                            }, label: strings.ListsCheckbox }),
+                        this.state.isFilteringLibraries && React.createElement(react_components_1.Spinner, { size: "tiny", className: ContentHealthManager_module_scss_1.default.progressSpinner }))),
                 React.createElement(ListView_1.ListView, { items: this.state.libraryEntries, viewFields: this.viewFieldsLibs, compact: true, selectionMode: react_1.SelectionMode.single, selection: this.onLibrarySelectionChanged }))),
             this.state.selectedTabValue === 'tab1' && (React.createElement("div", { id: "Register2", className: ContentHealthManager_module_scss_1.default.row },
                 React.createElement("div", { className: "".concat(ContentHealthManager_module_scss_1.default.row, " ").concat(ContentHealthManager_module_scss_1.default.libraryCommands) },
@@ -740,6 +718,33 @@ var ContentHealthManager = /** @class */ (function (_super) {
                         return [3 /*break*/, 4];
                     case 3:
                         this.setState({ isQueryingLibraries: false });
+                        return [7 /*endfinally*/];
+                    case 4: return [2 /*return*/];
+                }
+            });
+        });
+    };
+    ContentHealthManager.prototype.UpdateLibraryFilter = function (chkShowLibaries, chkShowLists) {
+        return tslib_1.__awaiter(this, void 0, void 0, function () {
+            var libraries;
+            return tslib_1.__generator(this, function (_a) {
+                switch (_a.label) {
+                    case 0:
+                        if (!chkShowLibaries && !chkShowLists) {
+                            this.setState({ chkShowLibaries: chkShowLibaries, chkShowLists: chkShowLists, libraryEntries: [] });
+                            return [2 /*return*/];
+                        }
+                        this.setState({ isFilteringLibraries: true, chkShowLibaries: chkShowLibaries, chkShowLists: chkShowLists });
+                        _a.label = 1;
+                    case 1:
+                        _a.trys.push([1, , 3, 4]);
+                        return [4 /*yield*/, this.dataManager.GetAllLists(this.GetSelectedSite().url, chkShowLists, chkShowLibaries)];
+                    case 2:
+                        libraries = _a.sent();
+                        this.setState({ libraryEntries: libraries });
+                        return [3 /*break*/, 4];
+                    case 3:
+                        this.setState({ isFilteringLibraries: false });
                         return [7 /*endfinally*/];
                     case 4: return [2 /*return*/];
                 }

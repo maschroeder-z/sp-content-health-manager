@@ -34,6 +34,7 @@ interface IContentHealthManagerState {
   chkShowLibaries: boolean;
   selectedFoundItem?: any | null;
   isQueryingLibraries?: boolean;
+  isFilteringLibraries?: boolean;
   isProcessingBrokenLinks?: boolean;
   expandedContentSections: Set<string>;
   showOnlyBrokenLinks: boolean;
@@ -202,6 +203,7 @@ export default class ContentHealthManager extends React.Component<IContentHealth
       chkShowLists: true,
       selectedFoundItem: null,
       isQueryingLibraries: false,
+      isFilteringLibraries: false,
       isProcessingBrokenLinks: false,
       expandedContentSections: new Set<string>(),
       showOnlyBrokenLinks: false
@@ -339,28 +341,23 @@ export default class ContentHealthManager extends React.Component<IContentHealth
                 <div className={`${styles['col-sm8']} ${styles.checkboxContainer}`}>
                   <Checkbox
                     checked={this.state.chkShowLibaries}
-                    onChange={async (ev, checked: boolean | undefined) => {                                              
-                        const libraries = await this.dataManager.GetAllLists(this.GetSelectedSite().url, this.state.chkShowLists, checked || false);
-                        this.setState({ 
-                          libraryEntries: libraries,
-                          chkShowLibaries: checked || false
-                        }); 
+                    disabled={this.state.isFilteringLibraries}
+                    onChange={(ev, checked: boolean | undefined) => {
+                        void this.UpdateLibraryFilter(checked || false, this.state.chkShowLists);
                       }
                     }
                     label={strings.LibrariesCheckbox}
                   />
-                  <Checkbox 
+                  <Checkbox
                     checked={this.state.chkShowLists}
-                    onChange={async (ev, checked: boolean | undefined) => {                    
-                        const libraries = await this.dataManager.GetAllLists(this.GetSelectedSite().url, checked || false, this.state.chkShowLibaries);
-                        this.setState({ 
-                          libraryEntries: libraries,
-                          chkShowLists: checked || false
-                        });                        
+                    disabled={this.state.isFilteringLibraries}
+                    onChange={(ev, checked: boolean | undefined) => {
+                        void this.UpdateLibraryFilter(this.state.chkShowLibaries, checked || false);
                       }
                     }
                     label={strings.ListsCheckbox}
-                  />  
+                  />
+                  {this.state.isFilteringLibraries && <Spinner size="tiny" className={styles.progressSpinner} />}
                 </div>
             </div>
             <ListView                
@@ -753,6 +750,21 @@ export default class ContentHealthManager extends React.Component<IContentHealth
       await this.CollectItemsFromListAndLibraries();
     } finally {
       this.setState({ isQueryingLibraries: false });
+    }
+  }
+
+  private async UpdateLibraryFilter(chkShowLibaries: boolean, chkShowLists: boolean): Promise<void> {
+    if (!chkShowLibaries && !chkShowLists) {
+      this.setState({ chkShowLibaries, chkShowLists, libraryEntries: [] });
+      return;
+    }
+
+    this.setState({ isFilteringLibraries: true, chkShowLibaries, chkShowLists });
+    try {
+      const libraries = await this.dataManager.GetAllLists(this.GetSelectedSite().url, chkShowLists, chkShowLibaries);
+      this.setState({ libraryEntries: libraries });
+    } finally {
+      this.setState({ isFilteringLibraries: false });
     }
   }
 
