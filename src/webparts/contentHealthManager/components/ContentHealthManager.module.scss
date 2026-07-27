@@ -5,7 +5,7 @@ https://learn.microsoft.com/en-us/sharepoint/dev/spfx/office-ui-fabric-integrati
 
 
 .row {
-  @include ms-Grid-row;  
+  @include ms-Grid-row;
   padding: 0px;
 }
 
@@ -78,6 +78,7 @@ https://learn.microsoft.com/en-us/sharepoint/dev/spfx/office-ui-fabric-integrati
   padding: 1em;
   color: "[theme:bodyText, default: #323130]";
   color: var(--bodyText);
+
   &.teams {
     font-family: $ms-font-family-fallbacks;
   }
@@ -106,7 +107,7 @@ https://learn.microsoft.com/en-us/sharepoint/dev/spfx/office-ui-fabric-integrati
   display: flex;
   align-items: center;
   gap: 8px;
-  
+
   svg {
     flex-shrink: 0;
   }
@@ -115,25 +116,49 @@ https://learn.microsoft.com/en-us/sharepoint/dev/spfx/office-ui-fabric-integrati
 .summarySection {
   margin-bottom: 10px;
   padding: 8px;
+  background-color: "[theme:themeLighterAlt, default: #eff6fc]";
+  background-color: var(--themeLighterAlt);
+  border-radius: 4px;
+  border: 1px solid "[theme:themeLighter, default: #deecf9]";
+  border-color: var(--themeLighter);
+}
+
+.noteBox {
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+  margin-top: 10px;
+  margin-left: 20px;
+  margin-bottom: 12px;
+  padding: 10px 12px;
   background-color: "[theme:neutralLighter, default: #f3f2f1]";
   background-color: var(--neutralLighter);
   border-radius: 4px;
   border: 1px solid "[theme:neutralLight, default: #edebe9]";
   border-color: var(--neutralLight);
+  font-size: 13px;
+  line-height: 1.4;
+}
+
+.noteBoxIcon {
+  flex-shrink: 0;
+  margin-top: 1px;
+  color: "[theme:neutralSecondary, default: #605e5c]";
+  color: var(--neutralSecondary);
 }
 
 .summaryDescription {
   display: flex;
   gap: 16px;
   margin-bottom: 20px;
-  
+
   h3 {
     margin-top: 0;
     margin-bottom: 8px;
     font-size: 20px;
     font-weight: 600;
   }
-  
+
   p {
     margin: 0;
     line-height: 1.5;
@@ -174,11 +199,11 @@ https://learn.microsoft.com/en-us/sharepoint/dev/spfx/office-ui-fabric-integrati
 .stepList {
   margin: 0;
   padding-left: 24px;
-  
+
   li {
     margin-bottom: 12px;
     line-height: 1.6;
-    
+
     strong {
       font-weight: 600;
     }
@@ -190,7 +215,7 @@ https://learn.microsoft.com/en-us/sharepoint/dev/spfx/office-ui-fabric-integrati
   margin-bottom: 0;
   padding-left: 24px;
   list-style-type: none;
-  
+
   li {
     margin-bottom: 6px;
     line-height: 1.5;

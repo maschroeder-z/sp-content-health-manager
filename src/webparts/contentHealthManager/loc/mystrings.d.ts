@@ -36,6 +36,7 @@ declare interface IContentHealthManagerWebPartStrings {
   // Library Analysis
   SelectDateLabel: string;
   SelectQueryDatePlaceholder: string;
+  SelectDateHint: string;
   QueryAllLibraries: string;
   QueryLibrary: string;
   CheckedOutItems: string;
@@ -45,6 +46,17 @@ declare interface IContentHealthManagerWebPartStrings {
   // Broken Links Analysis
   FindBrokenLinks: string;
   ProcessPage: string;
+  // Button tooltips
+  TooltipQueryAllLibraries: string;
+  TooltipQueryLibrary: string;
+  TooltipCheckedOutItems: string;
+  TooltipOpenLibraryDetails: string;
+  TooltipFindBrokenLinks: string;
+  TooltipProcessPage: string;
+  TooltipOpenPageDetails: string;
+  TooltipShowPermissions: string;
+  TooltipCloseDialog: string;
+  TooltipToggleContent: string;
   // Page Report Dialog
   PageReportTitle: string;
   TitleLabel: string;

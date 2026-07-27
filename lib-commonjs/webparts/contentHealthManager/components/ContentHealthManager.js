@@ -156,6 +156,7 @@ var ContentHealthManager = /** @class */ (function (_super) {
                 switch (_a.label) {
                     case 0:
                         dataManager = new GraphDataManager_1.default(this.props.msGraphClientFactory, this.props.spHTTPClient);
+                        this.setState({ isFilteringLibraries: true });
                         return [4 /*yield*/, dataManager.GetPages4Site(data.optionValue)];
                     case 1:
                         pages = _a.sent();
@@ -164,15 +165,22 @@ var ContentHealthManager = /** @class */ (function (_super) {
                             pageEntries: pages,
                             selectedSiteId: data.optionValue
                         });
+                        _a.label = 2;
+                    case 2:
+                        _a.trys.push([2, , 4, 5]);
                         siteInfo = this.state.SelectedSites.filter(function (x) { return x.id === data.optionValue; })[0];
                         return [4 /*yield*/, dataManager.GetAllLists(siteInfo.url, this.state.chkShowLists, this.state.chkShowLibaries)];
-                    case 2:
+                    case 3:
                         libraries = _a.sent();
                         console.log("All lists", libraries);
                         this.setState({
                             libraryEntries: libraries
                         });
-                        return [2 /*return*/];
+                        return [3 /*break*/, 5];
+                    case 4:
+                        this.setState({ isFilteringLibraries: false });
+                        return [7 /*endfinally*/];
+                    case 5: return [2 /*return*/];
                 }
             });
         }); };
@@ -304,20 +312,28 @@ var ContentHealthManager = /** @class */ (function (_super) {
                     React.createElement(react_components_1.Tab, { value: "tab2" }, strings.LibraryAnalysisTab)),
                 " "),
             this.state.selectedTabValue === 'tab2' && (React.createElement("div", { id: "Register1", className: ContentHealthManager_module_scss_1.default.row },
+                React.createElement("div", { className: ContentHealthManager_module_scss_1.default.row },
+                    React.createElement("div", { className: ContentHealthManager_module_scss_1.default['col-sm12'] },
+                        React.createElement("div", { className: ContentHealthManager_module_scss_1.default.noteBox },
+                            React.createElement(react_icons_1.Info24Regular, { className: ContentHealthManager_module_scss_1.default.noteBoxIcon }),
+                            React.createElement("span", null, strings.SelectDateHint)))),
                 React.createElement("div", { className: "".concat(ContentHealthManager_module_scss_1.default.row, " ").concat(ContentHealthManager_module_scss_1.default.libraryCommands) },
                     React.createElement("div", { className: ContentHealthManager_module_scss_1.default['col-sm5'] },
                         React.createElement(react_components_1.Field, { label: strings.SelectDateLabel, orientation: "horizontal" },
                             React.createElement(react_1.DatePicker, { value: this.state.dateStartDate, minDate: new Date(2000, 0, 1), maxDate: new Date(), placeholder: strings.SelectQueryDatePlaceholder, onSelectDate: function (selectedDate) { return _this.setState({ dateStartDate: selectedDate }); } }))),
                     React.createElement("div", { className: "".concat(ContentHealthManager_module_scss_1.default['col-sm7'], " ").concat(ContentHealthManager_module_scss_1.default.libraryCommandsLeft) },
-                        React.createElement(react_components_1.Button, { onClick: function () { return _this.StartQueryLstAndLibraries(); }, disabled: this.state.isQueryingLibraries },
-                            !this.state.selectedLibrary && React.createElement("span", null, strings.QueryAllLibraries),
-                            this.state.selectedLibrary && React.createElement("span", null, strings.QueryLibrary)),
+                        React.createElement(react_components_1.Tooltip, { content: this.state.selectedLibrary ? strings.TooltipQueryLibrary : strings.TooltipQueryAllLibraries, relationship: "label" },
+                            React.createElement(react_components_1.Button, { icon: React.createElement(react_icons_1.DatabaseSearch24Regular, null), onClick: function () { return _this.StartQueryLstAndLibraries(); }, disabled: this.state.isQueryingLibraries },
+                                !this.state.selectedLibrary && React.createElement("span", null, strings.QueryAllLibraries),
+                                this.state.selectedLibrary && React.createElement("span", null, strings.QueryLibrary))),
                         this.state.isQueryingLibraries && React.createElement(react_components_1.Spinner, { size: "tiny", className: ContentHealthManager_module_scss_1.default.progressSpinner }),
                         "\u00A0",
-                        React.createElement(react_components_1.Button, { onClick: function () { return _this.StartQueryCheckedOutItems(); } }, strings.CheckedOutItems))),
+                        React.createElement(react_components_1.Tooltip, { content: strings.TooltipCheckedOutItems, relationship: "label" },
+                            React.createElement(react_components_1.Button, { icon: React.createElement(react_icons_1.LockClosed24Regular, null), onClick: function () { return _this.StartQueryCheckedOutItems(); } }, strings.CheckedOutItems)))),
                 React.createElement("div", { className: "".concat(ContentHealthManager_module_scss_1.default.row, " ").concat(ContentHealthManager_module_scss_1.default.libraryCommands) },
                     React.createElement("div", { className: ContentHealthManager_module_scss_1.default['col-sm4'] },
-                        React.createElement(react_components_1.Button, { onClick: function () { return _this.ShowLibraryReport(); }, disabled: !this.state.selectedLibrary }, strings.OpenDetails)),
+                        React.createElement(react_components_1.Tooltip, { content: strings.TooltipOpenLibraryDetails, relationship: "label" },
+                            React.createElement(react_components_1.Button, { icon: React.createElement(react_icons_1.Open24Regular, null), onClick: function () { return _this.ShowLibraryReport(); }, disabled: !this.state.selectedLibrary }, strings.OpenDetails))),
                     React.createElement("div", { className: "".concat(ContentHealthManager_module_scss_1.default['col-sm8'], " ").concat(ContentHealthManager_module_scss_1.default.checkboxContainer) },
                         React.createElement(react_1.Checkbox, { checked: this.state.chkShowLibaries, disabled: this.state.isFilteringLibraries, onChange: function (ev, checked) {
                                 void _this.UpdateLibraryFilter(checked || false, _this.state.chkShowLists);
@@ -330,12 +346,14 @@ var ContentHealthManager = /** @class */ (function (_super) {
             this.state.selectedTabValue === 'tab1' && (React.createElement("div", { id: "Register2", className: ContentHealthManager_module_scss_1.default.row },
                 React.createElement("div", { className: "".concat(ContentHealthManager_module_scss_1.default.row, " ").concat(ContentHealthManager_module_scss_1.default.libraryCommands) },
                     React.createElement("div", { className: "".concat(ContentHealthManager_module_scss_1.default['col-sm12'], " ").concat(ContentHealthManager_module_scss_1.default.libraryCommandsLeft) },
-                        React.createElement(react_components_1.Button, { onClick: function () { return _this.StartBrokenLinkProcess(); }, disabled: this.state.isProcessingBrokenLinks },
-                            !this.state.selectedPage && React.createElement("span", null, strings.FindBrokenLinks),
-                            this.state.selectedPage && React.createElement("span", null, strings.ProcessPage)),
+                        React.createElement(react_components_1.Tooltip, { content: this.state.selectedPage ? strings.TooltipProcessPage : strings.TooltipFindBrokenLinks, relationship: "label" },
+                            React.createElement(react_components_1.Button, { icon: React.createElement(react_icons_1.Link24Regular, null), onClick: function () { return _this.StartBrokenLinkProcess(); }, disabled: this.state.isProcessingBrokenLinks },
+                                !this.state.selectedPage && React.createElement("span", null, strings.FindBrokenLinks),
+                                this.state.selectedPage && React.createElement("span", null, strings.ProcessPage))),
                         this.state.isProcessingBrokenLinks && React.createElement(react_components_1.Spinner, { size: "tiny", className: ContentHealthManager_module_scss_1.default.progressSpinner }),
                         "\u00A0",
-                        React.createElement(react_components_1.Button, { onClick: function () { return _this.ShowPageReport(); }, disabled: !this.state.selectedPage }, strings.OpenDetails))),
+                        React.createElement(react_components_1.Tooltip, { content: strings.TooltipOpenPageDetails, relationship: "label" },
+                            React.createElement(react_components_1.Button, { icon: React.createElement(react_icons_1.Open24Regular, null), onClick: function () { return _this.ShowPageReport(); }, disabled: !this.state.selectedPage }, strings.OpenDetails)))),
                 React.createElement(ListView_1.ListView, { items: this.state.pageEntries, viewFields: this.viewFieldsPage, compact: true, selectionMode: react_1.SelectionMode.single, selection: this.onListSelectionChanged }))),
             React.createElement(react_components_1.Dialog, { open: !!this.state.isReportOpen, onOpenChange: function (_, data) { return _this.setState({ isReportOpen: !!data.open }); }, modalType: 'alert' },
                 React.createElement(react_components_1.DialogSurface, null,
@@ -396,7 +414,7 @@ var ContentHealthManager = /** @class */ (function (_super) {
                                                                 React.createElement("strong", null, strings.UrlLabel),
                                                                 React.createElement("a", { href: link.url, target: "_blank", rel: "noopener noreferrer", style: { marginLeft: '4px', color: '#0078d4' } }, link.title || strings.NoTitle)),
                                                             link.Content && link.Content.trim().length > 0 && (React.createElement("div", { style: { marginTop: '8px' } },
-                                                                React.createElement("button", { onClick: function () {
+                                                                React.createElement("button", { title: strings.TooltipToggleContent, onClick: function () {
                                                                         var currentExpanded = _this.state.expandedContentSections || new Set();
                                                                         var expanded = new Set();
                                                                         currentExpanded.forEach(function (val) { return expanded.add(val); });
@@ -442,7 +460,8 @@ var ContentHealthManager = /** @class */ (function (_super) {
                                 return React.createElement("div", { style: { marginTop: 8 } }, strings.NoLinkAnalysisAvailable);
                             })())) : (React.createElement("div", null, strings.NoItemSelected))),
                         React.createElement(react_components_1.DialogActions, null,
-                            React.createElement(react_components_1.Button, { appearance: 'secondary', onClick: function () { return _this.setState({ isReportOpen: false }); } }, strings.CloseButton))))),
+                            React.createElement(react_components_1.Tooltip, { content: strings.TooltipCloseDialog, relationship: "label" },
+                                React.createElement(react_components_1.Button, { icon: React.createElement(react_icons_1.Dismiss24Regular, null), appearance: 'secondary', onClick: function () { return _this.setState({ isReportOpen: false }); } }, strings.CloseButton)))))),
             React.createElement(react_components_1.Dialog, { open: !!this.state.isLibraryReportOpen, onOpenChange: function (_, data) { return _this.setState({ isLibraryReportOpen: !!data.open }); }, modalType: 'alert' },
                 React.createElement(react_components_1.DialogSurface, null,
                     React.createElement(react_components_1.DialogBody, null,
@@ -499,12 +518,14 @@ var ContentHealthManager = /** @class */ (function (_super) {
                                         React.createElement("strong", null, strings.TotalItemsFound),
                                         " ",
                                         this.state.selectedLibrary.FoundItems.length),
-                                    React.createElement(react_components_1.Button, { onClick: this.onShowPermissionsClick, disabled: !this.state.selectedFoundItem, appearance: "secondary", style: { marginBottom: '8px' } }, strings.ShowPermissions),
+                                    React.createElement(react_components_1.Tooltip, { content: strings.TooltipShowPermissions, relationship: "label" },
+                                        React.createElement(react_components_1.Button, { icon: React.createElement(react_icons_1.KeyMultiple24Regular, null), onClick: this.onShowPermissionsClick, disabled: !this.state.selectedFoundItem, appearance: "secondary", style: { marginBottom: '8px' } }, strings.ShowPermissions)),
                                     React.createElement("div", { style: { marginTop: 8, maxHeight: '300px' } },
                                         React.createElement(ListView_1.ListView, { items: this.state.selectedLibrary.FoundItems, viewFields: this.viewFieldsFoundItems, compact: true, selectionMode: react_1.SelectionMode.single, selection: this.onFoundItemSelectionChanged })))) : (React.createElement("div", { style: { padding: '16px', backgroundColor: '#f5f5f5', border: '1px solid #ddd', borderRadius: '4px', textAlign: 'center' } },
                                     React.createElement("p", { style: { margin: 0, color: '#666' } }, strings.QueryLibraryForResults)))))) : (React.createElement("div", null, strings.NoLibrarySelected))),
                         React.createElement(react_components_1.DialogActions, null,
-                            React.createElement(react_components_1.Button, { appearance: 'secondary', onClick: function () { return _this.setState({ isLibraryReportOpen: false }); } }, strings.CloseButton)))))));
+                            React.createElement(react_components_1.Tooltip, { content: strings.TooltipCloseDialog, relationship: "label" },
+                                React.createElement(react_components_1.Button, { icon: React.createElement(react_icons_1.Dismiss24Regular, null), appearance: 'secondary', onClick: function () { return _this.setState({ isLibraryReportOpen: false }); } }, strings.CloseButton))))))));
     };
     ContentHealthManager.prototype.componentDidMount = function () {
         return tslib_1.__awaiter(this, void 0, void 0, function () {

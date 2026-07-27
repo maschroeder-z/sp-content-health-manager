@@ -97,13 +97,23 @@ export default class ContentHealthManagerWebPart extends BaseClientSideWebPart<I
 
     this._isDarkTheme = !!currentTheme.isInverted;
     const {
-      semanticColors
+      semanticColors,
+      palette
     } = currentTheme;
 
     if (semanticColors) {
       this.domElement.style.setProperty('--bodyText', semanticColors.bodyText || null);
       this.domElement.style.setProperty('--link', semanticColors.link || null);
       this.domElement.style.setProperty('--linkHovered', semanticColors.linkHovered || null);
+    }
+
+    if (palette) {
+      this.domElement.style.setProperty('--themePrimary', palette.themePrimary || null);
+      this.domElement.style.setProperty('--themeLighterAlt', palette.themeLighterAlt || null);
+      this.domElement.style.setProperty('--themeLighter', palette.themeLighter || null);
+      this.domElement.style.setProperty('--neutralLighter', palette.neutralLighter || null);
+      this.domElement.style.setProperty('--neutralLight', palette.neutralLight || null);
+      this.domElement.style.setProperty('--neutralSecondary', palette.neutralSecondary || null);
     }
 
   }

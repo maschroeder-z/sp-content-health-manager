@@ -5,13 +5,13 @@ import { ListView, type IViewField } from '@pnp/spfx-controls-react/lib/ListView
 import { Checkbox, DatePicker, SelectionMode, Toggle } from '@fluentui/react';
 import { SitePicker } from "@pnp/spfx-controls-react/lib/SitePicker";
 import type { Site } from '../../../models/Site';
-import { Button, Dropdown, Option, Dialog, DialogSurface, DialogBody, DialogTitle, DialogContent, DialogActions, Field, TabList, Tab, TabValue, Spinner } from '@fluentui/react-components';
+import { Button, Dropdown, Option, Dialog, DialogSurface, DialogBody, DialogTitle, DialogContent, DialogActions, Field, TabList, Tab, TabValue, Spinner, Tooltip } from '@fluentui/react-components';
 import GraphDataManager from '../../../services/GraphDataManager';
 import { PageProcessing } from '../../../Core/PageProcessing';
 import { Page } from '../../../models/Page';
 import { PageResult } from '../../../models/PageResult';
 import type { LinkInfo } from '../../../models/LinkInfo';
-import { CheckmarkCircleColor, CheckmarkCircleHintRegular, FlagPrideIntersexInclusiveProgressFilled, QuestionCircleColor, WarningColor, Search24Regular, DataTrending24Regular, List24Regular, Link24Regular, Clock24Regular, LockClosed24Regular, ChevronDown24Regular, ChevronUp24Regular } from "@fluentui/react-icons";
+import { CheckmarkCircleColor, CheckmarkCircleHintRegular, FlagPrideIntersexInclusiveProgressFilled, QuestionCircleColor, WarningColor, Search24Regular, DataTrending24Regular, List24Regular, Link24Regular, Clock24Regular, LockClosed24Regular, ChevronDown24Regular, ChevronUp24Regular, DatabaseSearch24Regular, Open24Regular, Dismiss24Regular, KeyMultiple24Regular, Info24Regular } from "@fluentui/react-icons";
 import { ListInformation } from '../../../models/REST/ListInformation';
 import { FieldDateRenderer,FieldTextRenderer } from '@pnp/spfx-controls-react';
 import { ListTemplateType } from '../../../Core/ListTemplateTypes';
@@ -306,11 +306,19 @@ export default class ContentHealthManager extends React.Component<IContentHealth
         </TabList> </> }
 
         {this.state.selectedTabValue === 'tab2' && (
-          <div id="Register1" className={styles.row}>            
-            <div className={`${styles.row} ${styles.libraryCommands}`}> 
-              <div className={styles['col-sm5']}>    
-                <Field label={strings.SelectDateLabel} orientation="horizontal" >
-                  <DatePicker 
+          <div id="Register1" className={styles.row}>
+            <div className={styles.row}>
+              <div className={styles['col-sm12']}>
+                <div className={styles.noteBox}>
+                  <Info24Regular className={styles.noteBoxIcon} />
+                  <span>{strings.SelectDateHint}</span>
+                </div>
+              </div>
+            </div>
+            <div className={`${styles.row} ${styles.libraryCommands}`}>
+              <div className={styles['col-sm5']}>
+                <Field label={strings.SelectDateLabel} orientation="horizontal">
+                  <DatePicker
                     value={this.state.dateStartDate as Date | undefined}
                     minDate={new Date(2000,0,1)}
                     maxDate={new Date()}
@@ -321,21 +329,29 @@ export default class ContentHealthManager extends React.Component<IContentHealth
                   />
                 </Field>
               </div>
-              <div className={`${styles['col-sm7']} ${styles.libraryCommandsLeft}`}>    
-                <Button onClick={() => this.StartQueryLstAndLibraries()} disabled={this.state.isQueryingLibraries}>
-                  {!this.state.selectedLibrary && <span>{strings.QueryAllLibraries}</span>}
-                  {this.state.selectedLibrary && <span>{strings.QueryLibrary}</span>}
-                </Button>
-                
-                
+              <div className={`${styles['col-sm7']} ${styles.libraryCommandsLeft}`}>
+                <Tooltip
+                  content={this.state.selectedLibrary ? strings.TooltipQueryLibrary : strings.TooltipQueryAllLibraries}
+                  relationship="label">
+                  <Button icon={<DatabaseSearch24Regular />} onClick={() => this.StartQueryLstAndLibraries()} disabled={this.state.isQueryingLibraries}>
+                    {!this.state.selectedLibrary && <span>{strings.QueryAllLibraries}</span>}
+                    {this.state.selectedLibrary && <span>{strings.QueryLibrary}</span>}
+                  </Button>
+                </Tooltip>
+
+
                 {this.state.isQueryingLibraries && <Spinner size="tiny" className={styles.progressSpinner} />}
                 &nbsp;
-                <Button onClick={() => this.StartQueryCheckedOutItems()}>{strings.CheckedOutItems}</Button>                                
+                <Tooltip content={strings.TooltipCheckedOutItems} relationship="label">
+                  <Button icon={<LockClosed24Regular />} onClick={() => this.StartQueryCheckedOutItems()}>{strings.CheckedOutItems}</Button>
+                </Tooltip>
               </div>
             </div>
-            <div className={`${styles.row} ${styles.libraryCommands}`}> 
+            <div className={`${styles.row} ${styles.libraryCommands}`}>
                 <div className={styles['col-sm4']}>
-                  <Button onClick={() => this.ShowLibraryReport()} disabled={!this.state.selectedLibrary}>{strings.OpenDetails}</Button>
+                  <Tooltip content={strings.TooltipOpenLibraryDetails} relationship="label">
+                    <Button icon={<Open24Regular />} onClick={() => this.ShowLibraryReport()} disabled={!this.state.selectedLibrary}>{strings.OpenDetails}</Button>
+                  </Tooltip>
                 </div>
                 
                 <div className={`${styles['col-sm8']} ${styles.checkboxContainer}`}>
@@ -372,14 +388,20 @@ export default class ContentHealthManager extends React.Component<IContentHealth
         {this.state.selectedTabValue === 'tab1' && (
           <div id="Register2" className={styles.row}>
           <div className={`${styles.row} ${styles.libraryCommands}`}> 
-            <div className={`${styles['col-sm12']} ${styles.libraryCommandsLeft}`}>              
-              <Button onClick={() => this.StartBrokenLinkProcess()} disabled={this.state.isProcessingBrokenLinks}>
-                {!this.state.selectedPage && <span>{strings.FindBrokenLinks}</span>}
-                {this.state.selectedPage && <span>{strings.ProcessPage}</span>}
-              </Button>
+            <div className={`${styles['col-sm12']} ${styles.libraryCommandsLeft}`}>
+              <Tooltip
+                content={this.state.selectedPage ? strings.TooltipProcessPage : strings.TooltipFindBrokenLinks}
+                relationship="label">
+                <Button icon={<Link24Regular />} onClick={() => this.StartBrokenLinkProcess()} disabled={this.state.isProcessingBrokenLinks}>
+                  {!this.state.selectedPage && <span>{strings.FindBrokenLinks}</span>}
+                  {this.state.selectedPage && <span>{strings.ProcessPage}</span>}
+                </Button>
+              </Tooltip>
               {this.state.isProcessingBrokenLinks && <Spinner size="tiny" className={styles.progressSpinner} />}
               &nbsp;
-              <Button onClick={() => this.ShowPageReport()} disabled={!this.state.selectedPage}>{strings.OpenDetails}</Button>
+              <Tooltip content={strings.TooltipOpenPageDetails} relationship="label">
+                <Button icon={<Open24Regular />} onClick={() => this.ShowPageReport()} disabled={!this.state.selectedPage}>{strings.OpenDetails}</Button>
+              </Tooltip>
             </div>
           </div>
           <ListView                
@@ -452,6 +474,7 @@ export default class ContentHealthManager extends React.Component<IContentHealth
                                         {link.Content && link.Content.trim().length > 0 && (
                                           <div style={{ marginTop: '8px' }}>
                                             <button
+                                              title={strings.TooltipToggleContent}
                                               onClick={() => {
                                                 const currentExpanded = this.state.expandedContentSections || new Set<string>();
                                                 const expanded = new Set<string>();
@@ -524,7 +547,9 @@ export default class ContentHealthManager extends React.Component<IContentHealth
                 )}
               </DialogContent>
               <DialogActions>
-                <Button appearance={'secondary'} onClick={() => this.setState({ isReportOpen: false })}>{strings.CloseButton}</Button>
+                <Tooltip content={strings.TooltipCloseDialog} relationship="label">
+                  <Button icon={<Dismiss24Regular />} appearance={'secondary'} onClick={() => this.setState({ isReportOpen: false })}>{strings.CloseButton}</Button>
+                </Tooltip>
               </DialogActions>
             </DialogBody>
           </DialogSurface>
@@ -556,14 +581,17 @@ export default class ContentHealthManager extends React.Component<IContentHealth
                       {this.state.selectedLibrary.FoundItems && this.state.selectedLibrary.FoundItems.length > 0 ? (
                         <div>
                           <div><strong>{strings.TotalItemsFound}</strong> {this.state.selectedLibrary.FoundItems.length}</div>
-                          <Button 
-                            onClick={this.onShowPermissionsClick}
-                            disabled={!this.state.selectedFoundItem}
-                            appearance="secondary"
-                            style={{ marginBottom: '8px' }}
-                          >
-                            {strings.ShowPermissions}
-                          </Button>
+                          <Tooltip content={strings.TooltipShowPermissions} relationship="label">
+                            <Button
+                              icon={<KeyMultiple24Regular />}
+                              onClick={this.onShowPermissionsClick}
+                              disabled={!this.state.selectedFoundItem}
+                              appearance="secondary"
+                              style={{ marginBottom: '8px' }}
+                            >
+                              {strings.ShowPermissions}
+                            </Button>
+                          </Tooltip>
                           <div style={{ marginTop: 8, maxHeight: '300px' }}>
                             <ListView                
                               items={this.state.selectedLibrary.FoundItems}
@@ -586,7 +614,9 @@ export default class ContentHealthManager extends React.Component<IContentHealth
                 )}
               </DialogContent>
               <DialogActions>
-                <Button appearance={'secondary'} onClick={() => this.setState({ isLibraryReportOpen: false })}>{strings.CloseButton}</Button>
+                <Tooltip content={strings.TooltipCloseDialog} relationship="label">
+                  <Button icon={<Dismiss24Regular />} appearance={'secondary'} onClick={() => this.setState({ isLibraryReportOpen: false })}>{strings.CloseButton}</Button>
+                </Tooltip>
               </DialogActions>
             </DialogBody>
           </DialogSurface>
@@ -768,20 +798,25 @@ export default class ContentHealthManager extends React.Component<IContentHealth
     }
   }
 
-  private onDropdDownSelectionChanged = async (event: any, data: any): Promise<void> => {    
+  private onDropdDownSelectionChanged = async (event: any, data: any): Promise<void> => {
     const dataManager = new GraphDataManager(this.props.msGraphClientFactory, this.props.spHTTPClient);
+    this.setState({ isFilteringLibraries: true });
     const pages = await dataManager.GetPages4Site(data.optionValue);
-    this.setState({ 
+    this.setState({
       selectedTabValue: this.state.selectedTabValue === null ? "tab1":this.state.selectedTabValue,
       pageEntries: pages,
       selectedSiteId: data.optionValue
     });
-    const siteInfo : Site = this.state.SelectedSites.filter(x=>x.id === data.optionValue)[0];    
-    const libraries = await dataManager.GetAllLists(siteInfo.url, this.state.chkShowLists, this.state.chkShowLibaries);
-    console.log("All lists", libraries);
-    this.setState({ 
-      libraryEntries: libraries      
-    });    
+    try {
+      const siteInfo : Site = this.state.SelectedSites.filter(x=>x.id === data.optionValue)[0];
+      const libraries = await dataManager.GetAllLists(siteInfo.url, this.state.chkShowLists, this.state.chkShowLibaries);
+      console.log("All lists", libraries);
+      this.setState({
+        libraryEntries: libraries
+      });
+    } finally {
+      this.setState({ isFilteringLibraries: false });
+    }
   }
 
   private onListSelectionChanged = (items: any[]): void => {
