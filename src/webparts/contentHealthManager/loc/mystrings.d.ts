@@ -92,6 +92,16 @@ declare interface IContentHealthManagerWebPartStrings {
   Yes: string;
   No: string;
   NA: string;
+  // Page Permissions Dialog
+  PermissionsButtonLabel: string;
+  PagePermissionsTitle: string;
+  PrincipalNameLabel: string;
+  PrincipalTypeLabel: string;
+  LoginNameLabel: string;
+  RolesLabel: string;
+  GroupLabel: string;
+  UserLabel: string;
+  NoPermissionsFound: string;
   // View Fields
   FoundLabel: string;
   StartQueryForResults: string;

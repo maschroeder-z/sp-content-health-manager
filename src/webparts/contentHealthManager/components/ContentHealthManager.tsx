@@ -11,8 +11,10 @@ import { PageProcessing } from '../../../Core/PageProcessing';
 import { Page } from '../../../models/Page';
 import { PageResult } from '../../../models/PageResult';
 import type { LinkInfo } from '../../../models/LinkInfo';
-import { CheckmarkCircleColor, CheckmarkCircleHintRegular, FlagPrideIntersexInclusiveProgressFilled, QuestionCircleColor, WarningColor, Search24Regular, DataTrending24Regular, List24Regular, Link24Regular, Clock24Regular, LockClosed24Regular, ChevronDown24Regular, ChevronUp24Regular, DatabaseSearch24Regular, Open24Regular, Dismiss24Regular, KeyMultiple24Regular, Info24Regular } from "@fluentui/react-icons";
+import { CheckmarkCircleColor, CheckmarkCircleHintRegular, FlagPrideIntersexInclusiveProgressFilled, QuestionCircleColor, WarningColor, Search24Regular, DataTrending24Regular, List24Regular, Link24Regular, Clock24Regular, LockClosed24Regular, ChevronDown24Regular, ChevronUp24Regular, DatabaseSearch24Regular, Open24Regular, Dismiss24Regular, KeyMultiple24Regular, Info24Regular, PeopleTeam16Regular, Person16Regular } from "@fluentui/react-icons";
 import { ListInformation } from '../../../models/REST/ListInformation';
+import PermissionsManager from '../../../services/PermissionsManager';
+import { SharePointPrincipalPermission } from '../../../models/REST/Permissions';
 import { FieldDateRenderer,FieldTextRenderer } from '@pnp/spfx-controls-react';
 import { ListTemplateType } from '../../../Core/ListTemplateTypes';
 import * as strings from 'ContentHealthManagerWebPartStrings';
@@ -38,6 +40,10 @@ interface IContentHealthManagerState {
   isProcessingBrokenLinks?: boolean;
   expandedContentSections: Set<string>;
   showOnlyBrokenLinks: boolean;
+  isPagePermissionsOpen?: boolean;
+  pagePermissions: SharePointPrincipalPermission[];
+  isLoadingPagePermissions?: boolean;
+  pagePermissionsError?: string | null;
 }
 
 export default class ContentHealthManager extends React.Component<IContentHealthManagerProps, IContentHealthManagerState> {
@@ -68,6 +74,7 @@ export default class ContentHealthManager extends React.Component<IContentHealth
     }
 ]
   dataManager: GraphDataManager;
+  permissionsManager: PermissionsManager;
   // View fields for found items in library report dialog
   viewFieldsFoundItems: IViewField[] = [
     { name: 'Id', displayName: 'ID', sorting: true, isResizable: true, minWidth: 80, linkPropertyName:'webUrl' },
@@ -184,6 +191,22 @@ export default class ContentHealthManager extends React.Component<IContentHealth
      }
   ];
 
+  viewFieldsPermissions: IViewField[] = [
+    { name: 'displayName', displayName: strings.PrincipalNameLabel, sorting: true, isResizable: true, minWidth: 180 },
+    { name: 'isGroup', displayName: strings.PrincipalTypeLabel, sorting: true, isResizable: true, minWidth: 100,
+      render: (item: SharePointPrincipalPermission) => (
+        <span style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
+          {item.isGroup ? <PeopleTeam16Regular /> : <Person16Regular />}
+          <span>{item.isGroup ? strings.GroupLabel : strings.UserLabel}</span>
+        </span>
+      )
+    },
+    { name: 'loginName', displayName: strings.LoginNameLabel, sorting: false, isResizable: true, minWidth: 220 },
+    { name: 'roles', displayName: strings.RolesLabel, sorting: false, isResizable: true, minWidth: 200,
+      render: (item: SharePointPrincipalPermission) => <FieldTextRenderer text={(item.roles || []).join(', ')} />
+    }
+  ];
+
   constructor(props: IContentHealthManagerProps) {
     super(props);
 
@@ -206,9 +229,14 @@ export default class ContentHealthManager extends React.Component<IContentHealth
       isFilteringLibraries: false,
       isProcessingBrokenLinks: false,
       expandedContentSections: new Set<string>(),
-      showOnlyBrokenLinks: false
+      showOnlyBrokenLinks: false,
+      isPagePermissionsOpen: false,
+      pagePermissions: [],
+      isLoadingPagePermissions: false,
+      pagePermissionsError: null
     };
     this.dataManager = new GraphDataManager(this.props.msGraphClientFactory, this.props.spHTTPClient);
+    this.permissionsManager = new PermissionsManager(this.props.spHTTPClient);
   }
 
   private GetLibraryEntryByIndex(index: string):ListInformation
@@ -401,6 +429,10 @@ export default class ContentHealthManager extends React.Component<IContentHealth
               &nbsp;
               <Tooltip content={strings.TooltipOpenPageDetails} relationship="label">
                 <Button icon={<Open24Regular />} onClick={() => this.ShowPageReport()} disabled={!this.state.selectedPage}>{strings.OpenDetails}</Button>
+              </Tooltip>
+              &nbsp;
+              <Tooltip content={strings.TooltipShowPermissions} relationship="label">
+                <Button icon={<KeyMultiple24Regular />} onClick={() => this.ShowPagePermissions()} disabled={!this.state.selectedPage}>{strings.PermissionsButtonLabel}</Button>
               </Tooltip>
             </div>
           </div>
@@ -621,6 +653,43 @@ export default class ContentHealthManager extends React.Component<IContentHealth
             </DialogBody>
           </DialogSurface>
         </Dialog>
+
+        <Dialog open={!!this.state.isPagePermissionsOpen} onOpenChange={(_: any, data: any) => this.setState({ isPagePermissionsOpen: !!data.open })} modalType={'alert'}>
+          <DialogSurface>
+            <DialogBody>
+              <DialogTitle>{strings.PagePermissionsTitle}</DialogTitle>
+              <DialogContent style={{ padding: 12 }}>
+                {this.state.selectedPage ? (
+                  <div>
+                    <div><strong>{strings.TitleLabel}</strong> {this.state.selectedPage.title || this.state.selectedPage.name}</div>
+                    <div><strong>{strings.UrlLabel}</strong> <a href={this.state.selectedPage.webUrl} target={'_blank'} rel={'noreferrer'}>{this.state.selectedPage.webUrl}</a></div>
+                    {this.state.isLoadingPagePermissions && <Spinner size="tiny" className={styles.progressSpinner} />}
+                    {this.state.pagePermissionsError && (
+                      <div style={{ color: '#d32f2f', marginTop: 8 }}>{this.state.pagePermissionsError}</div>
+                    )}
+                    {!this.state.isLoadingPagePermissions && !this.state.pagePermissionsError && this.state.pagePermissions.length === 0 && (
+                      <div style={{ marginTop: 8 }}>{strings.NoPermissionsFound}</div>
+                    )}
+                    <div style={{ marginTop: 12 }}>
+                      <ListView
+                        items={this.state.pagePermissions}
+                        viewFields={this.viewFieldsPermissions}
+                        compact={true}
+                        selectionMode={SelectionMode.none} />
+                    </div>
+                  </div>
+                ) : (
+                  <div>{strings.NoItemSelected}</div>
+                )}
+              </DialogContent>
+              <DialogActions>
+                <Tooltip content={strings.TooltipCloseDialog} relationship="label">
+                  <Button icon={<Dismiss24Regular />} appearance={'secondary'} onClick={() => this.setState({ isPagePermissionsOpen: false })}>{strings.CloseButton}</Button>
+                </Tooltip>
+              </DialogActions>
+            </DialogBody>
+          </DialogSurface>
+        </Dialog>
       </section>
     );
   }
@@ -643,6 +712,30 @@ export default class ContentHealthManager extends React.Component<IContentHealth
       return;
     }
     this.setState({ isReportOpen: true });
+  }
+
+  private async ShowPagePermissions(): Promise<void> {
+    if (!this.state.selectedPage) {
+      return;
+    }
+    this.setState({ isPagePermissionsOpen: true, isLoadingPagePermissions: true, pagePermissions: [], pagePermissionsError: null });
+    try {
+      const site = this.GetSelectedSite();
+      if (!site) {
+        throw new Error('No site is selected.');
+      }
+      if (!this.state.selectedPage.webUrl) {
+        throw new Error('The selected page has no URL.');
+      }
+      const artefact = await this.permissionsManager.resolveArtefactFromFileUrl(site.url, this.state.selectedPage.webUrl);
+      const permissions = await this.permissionsManager.get4ArtefactPermissions(artefact);
+      this.setState({ pagePermissions: permissions });
+    } catch (error) {
+      console.error('Error retrieving page permissions:', error);
+      this.setState({ pagePermissionsError: error instanceof Error ? error.message : String(error) });
+    } finally {
+      this.setState({ isLoadingPagePermissions: false });
+    }
   }
 
   private async StartBrokenLinkProcess(): Promise<void>
