@@ -3,9 +3,12 @@ import styles from './ContentHealthManager.module.scss';
 import type { IContentHealthManagerProps } from './IContentHealthManagerProps';
 import { ListView, type IViewField } from '@pnp/spfx-controls-react/lib/ListView';
 import { Checkbox, DatePicker, SelectionMode, Toggle } from '@fluentui/react';
+import type { IPersonaProps } from '@fluentui/react/lib/Persona';
 import { SitePicker } from "@pnp/spfx-controls-react/lib/SitePicker";
 import type { Site } from '../../../models/Site';
-import { Button, Dropdown, Option, Dialog, DialogSurface, DialogBody, DialogTitle, DialogContent, DialogActions, Field, TabList, Tab, TabValue, Spinner, Tooltip } from '@fluentui/react-components';
+import { Button, Dropdown, Option, Dialog, DialogSurface, DialogBody, DialogTitle, DialogContent, DialogActions, Field, TabList, Tab, TabValue, Spinner, Tooltip, Tree, TreeItem, TreeItemLayout, TreeOpenChangeData, TreeOpenChangeEvent } from '@fluentui/react-components';
+import { Panel, PanelGroup, PanelResizeHandle } from 'react-resizable-panels';
+import { PeoplePicker, IPeoplePickerUserItem, PrincipalType as PickerPrincipalType } from '@pnp/spfx-controls-react/lib/PeoplePicker';
 import GraphDataManager from '../../../services/GraphDataManager';
 import { PageProcessing } from '../../../Core/PageProcessing';
 import { Page } from '../../../models/Page';
@@ -14,13 +17,21 @@ import type { LinkInfo } from '../../../models/LinkInfo';
 import { CheckmarkCircleColor, CheckmarkCircleHintRegular, FlagPrideIntersexInclusiveProgressFilled, QuestionCircleColor, WarningColor, Search24Regular, DataTrending24Regular, List24Regular, Link24Regular, Clock24Regular, LockClosed24Regular, ChevronDown24Regular, ChevronUp24Regular, DatabaseSearch24Regular, Open24Regular, Dismiss24Regular, KeyMultiple24Regular, Info24Regular, PeopleTeam16Regular, Person16Regular } from "@fluentui/react-icons";
 import { ListInformation } from '../../../models/REST/ListInformation';
 import PermissionsManager from '../../../services/PermissionsManager';
-import { SharePointPrincipalPermission } from '../../../models/REST/Permissions';
+import { ResolvedGroupUser, SharePointArtefact, SharePointGroupInfo, SharePointPermissionInfo, SharePointPrincipalPermission } from '../../../models/REST/Permissions';
 import { FieldDateRenderer,FieldTextRenderer } from '@pnp/spfx-controls-react';
 import { ListTemplateType } from '../../../Core/ListTemplateTypes';
 import * as strings from 'ContentHealthManagerWebPartStrings';
 //import * as MicrosoftGraphBeta from "@microsoft/microsoft-graph-types-beta"
 
-interface IContentHealthManagerState {      
+interface IPermissionGroupNode {
+  key: string;
+  groupInfo: SharePointGroupInfo;
+  children?: IPermissionGroupNode[];
+  isLoadingChildren?: boolean;
+  loadError?: string | null;
+}
+
+interface IContentHealthManagerState {
   libraryEntries: ListInformation[];
   pageEntries: Page[];
   SelectedSites: Site[];
@@ -44,6 +55,17 @@ interface IContentHealthManagerState {
   pagePermissions: SharePointPrincipalPermission[];
   isLoadingPagePermissions?: boolean;
   pagePermissionsError?: string | null;
+  permissionGroupTree: IPermissionGroupNode[];
+  openTreeNodeKeys: Set<string>;
+  selectedTreeNodeKey: string;
+  groupMemberCache: Map<string, ResolvedGroupUser[]>;
+  isLoadingGroupMembers?: boolean;
+  groupMembersError?: string | null;
+  currentArtefact: SharePointArtefact | null;
+  permissionsSubjectTitle: string;
+  isCheckingPrincipalAccess?: boolean;
+  principalAccessResult: { displayName: string; hasAccess: boolean; permissionInfo: SharePointPermissionInfo } | null;
+  principalAccessError?: string | null;
 }
 
 export default class ContentHealthManager extends React.Component<IContentHealthManagerProps, IContentHealthManagerState> {
@@ -207,6 +229,12 @@ export default class ContentHealthManager extends React.Component<IContentHealth
     }
   ];
 
+  viewFieldsGroupMembers: IViewField[] = [
+    { name: 'displayName', displayName: strings.PrincipalNameLabel, sorting: true, isResizable: true, minWidth: 180 },
+    { name: 'email', displayName: strings.EmailLabel, sorting: true, isResizable: true, minWidth: 220 },
+    { name: 'loginName', displayName: strings.LoginNameLabel, sorting: false, isResizable: true, minWidth: 220 }
+  ];
+
   constructor(props: IContentHealthManagerProps) {
     super(props);
 
@@ -233,10 +261,21 @@ export default class ContentHealthManager extends React.Component<IContentHealth
       isPagePermissionsOpen: false,
       pagePermissions: [],
       isLoadingPagePermissions: false,
-      pagePermissionsError: null
+      pagePermissionsError: null,
+      permissionGroupTree: [],
+      openTreeNodeKeys: new Set<string>(),
+      selectedTreeNodeKey: 'root',
+      groupMemberCache: new Map<string, ResolvedGroupUser[]>(),
+      isLoadingGroupMembers: false,
+      groupMembersError: null,
+      currentArtefact: null,
+      permissionsSubjectTitle: '',
+      isCheckingPrincipalAccess: false,
+      principalAccessResult: null,
+      principalAccessError: null
     };
     this.dataManager = new GraphDataManager(this.props.msGraphClientFactory, this.props.spHTTPClient);
-    this.permissionsManager = new PermissionsManager(this.props.spHTTPClient);
+    this.permissionsManager = new PermissionsManager(this.props.msGraphClientFactory, this.props.spHTTPClient);
   }
 
   private GetLibraryEntryByIndex(index: string):ListInformation
@@ -431,8 +470,8 @@ export default class ContentHealthManager extends React.Component<IContentHealth
                 <Button icon={<Open24Regular />} onClick={() => this.ShowPageReport()} disabled={!this.state.selectedPage}>{strings.OpenDetails}</Button>
               </Tooltip>
               &nbsp;
-              <Tooltip content={strings.TooltipShowPermissions} relationship="label">
-                <Button icon={<KeyMultiple24Regular />} onClick={() => this.ShowPagePermissions()} disabled={!this.state.selectedPage}>{strings.PermissionsButtonLabel}</Button>
+              <Tooltip content={this.state.selectedPage ? strings.TooltipShowPermissions : strings.TooltipShowLibraryPermissions} relationship="label">
+                <Button icon={<KeyMultiple24Regular />} onClick={() => this.ShowPagePermissions()}>{strings.PermissionsButtonLabel}</Button>
               </Tooltip>
             </div>
           </div>
@@ -655,14 +694,50 @@ export default class ContentHealthManager extends React.Component<IContentHealth
         </Dialog>
 
         <Dialog open={!!this.state.isPagePermissionsOpen} onOpenChange={(_: any, data: any) => this.setState({ isPagePermissionsOpen: !!data.open })} modalType={'alert'}>
-          <DialogSurface>
+          <DialogSurface style={{ maxWidth: '95vw', width: 960 }}>
             <DialogBody>
               <DialogTitle>{strings.PagePermissionsTitle}</DialogTitle>
               <DialogContent style={{ padding: 12 }}>
-                {this.state.selectedPage ? (
-                  <div>
-                    <div><strong>{strings.TitleLabel}</strong> {this.state.selectedPage.title || this.state.selectedPage.name}</div>
-                    <div><strong>{strings.UrlLabel}</strong> <a href={this.state.selectedPage.webUrl} target={'_blank'} rel={'noreferrer'}>{this.state.selectedPage.webUrl}</a></div>
+                <div>
+                    <div><strong>{strings.TitleLabel}</strong> {this.state.permissionsSubjectTitle}</div>
+                    {this.state.selectedPage && (
+                      <div><strong>{strings.UrlLabel}</strong> <a href={this.state.selectedPage.webUrl} target={'_blank'} rel={'noreferrer'}>{this.state.selectedPage.webUrl}</a></div>
+                    )}
+                    {this.state.currentArtefact && (
+                      <div style={{ marginTop: 12 }}>
+                        <PeoplePicker
+                          context={{
+                            absoluteUrl: this.state.currentArtefact.webUrl,
+                            msGraphClientFactory: this.props.msGraphClientFactory,
+                            spHttpClient: this.props.spHTTPClient
+                          }}
+                          personSelectionLimit={1}
+                          principalTypes={[PickerPrincipalType.User, PickerPrincipalType.SecurityGroup, PickerPrincipalType.SharePointGroup, PickerPrincipalType.DistributionList]}
+                          placeholder={strings.SearchUserOrGroupPlaceholder}
+                          onChange={(items: IPersonaProps[]) => {
+                            const item = items && items[0] ? items[0] as unknown as IPeoplePickerUserItem : undefined;
+                            if (item) {
+                              void this.checkPrincipalAccess(item);
+                            } else {
+                              this.setState({ principalAccessResult: null, principalAccessError: null });
+                            }
+                          }}
+                        />
+                        {this.state.isCheckingPrincipalAccess && <Spinner size="tiny" className={styles.progressSpinner} />}
+                        {this.state.principalAccessError && (
+                          <div style={{ color: '#d32f2f', marginTop: 8 }}>{this.state.principalAccessError}</div>
+                        )}
+                        {!this.state.isCheckingPrincipalAccess && !this.state.principalAccessError && this.state.principalAccessResult && (
+                          <div style={{ marginTop: 8 }}>
+                            {this.state.principalAccessResult.hasAccess
+                              ? strings.HasAccessLabel
+                                  .replace('{0}', this.state.principalAccessResult.displayName)
+                                  .replace('{1}', this.getPermissionLevelLabel(this.state.principalAccessResult.permissionInfo))
+                              : strings.NoAccessLabel.replace('{0}', this.state.principalAccessResult.displayName)}
+                          </div>
+                        )}
+                      </div>
+                    )}
                     {this.state.isLoadingPagePermissions && <Spinner size="tiny" className={styles.progressSpinner} />}
                     {this.state.pagePermissionsError && (
                       <div style={{ color: '#d32f2f', marginTop: 8 }}>{this.state.pagePermissionsError}</div>
@@ -670,17 +745,56 @@ export default class ContentHealthManager extends React.Component<IContentHealth
                     {!this.state.isLoadingPagePermissions && !this.state.pagePermissionsError && this.state.pagePermissions.length === 0 && (
                       <div style={{ marginTop: 8 }}>{strings.NoPermissionsFound}</div>
                     )}
-                    <div style={{ marginTop: 12 }}>
-                      <ListView
-                        items={this.state.pagePermissions}
-                        viewFields={this.viewFieldsPermissions}
-                        compact={true}
-                        selectionMode={SelectionMode.none} />
-                    </div>
-                  </div>
-                ) : (
-                  <div>{strings.NoItemSelected}</div>
-                )}
+                    {!this.state.isLoadingPagePermissions && !this.state.pagePermissionsError && this.state.pagePermissions.length > 0 && (
+                      <PanelGroup direction="horizontal" style={{ height: 420, marginTop: 12 }}>
+                        <Panel defaultSize={30} minSize={15} maxSize={60}>
+                          <div style={{ height: '100%', overflow: 'auto', borderRight: '1px solid #e0e0e0' }}>
+                            <Tree
+                              openItems={this.state.openTreeNodeKeys}
+                              onOpenChange={this.handleTreeOpenChange}
+                              aria-label={strings.PagePermissionsTitle}
+                            >
+                              <TreeItem itemType="leaf" value="root">
+                                <TreeItemLayout
+                                  onClick={() => this.selectTreeNode('root')}
+                                  style={this.state.selectedTreeNodeKey === 'root' ? { background: '#e0e0e0' } : undefined}
+                                >
+                                  {this.state.permissionsSubjectTitle}
+                                </TreeItemLayout>
+                              </TreeItem>
+                              {this.state.permissionGroupTree.map(node => this.renderGroupTreeNode(node))}
+                            </Tree>
+                          </div>
+                        </Panel>
+                        <PanelResizeHandle style={{ width: 6, cursor: 'col-resize', background: '#e0e0e0' }} />
+                        <Panel>
+                          <div style={{ height: '100%', overflow: 'auto', paddingLeft: 8 }}>
+                            {this.state.selectedTreeNodeKey === 'root' ? (
+                              <ListView
+                                items={this.state.pagePermissions.filter(p => !p.isGroup)}
+                                viewFields={this.viewFieldsPermissions}
+                                compact={true}
+                                selectionMode={SelectionMode.none} />
+                            ) : (
+                              <>
+                                {this.state.isLoadingGroupMembers && <Spinner size="tiny" className={styles.progressSpinner} />}
+                                {this.state.groupMembersError && (
+                                  <div style={{ color: '#d32f2f', marginTop: 8 }}>{this.state.groupMembersError}</div>
+                                )}
+                                {!this.state.isLoadingGroupMembers && !this.state.groupMembersError && (
+                                  <ListView
+                                    items={this.state.groupMemberCache.get(this.state.selectedTreeNodeKey) || []}
+                                    viewFields={this.viewFieldsGroupMembers}
+                                    compact={true}
+                                    selectionMode={SelectionMode.none} />
+                                )}
+                              </>
+                            )}
+                          </div>
+                        </Panel>
+                      </PanelGroup>
+                    )}
+                </div>
               </DialogContent>
               <DialogActions>
                 <Tooltip content={strings.TooltipCloseDialog} relationship="label">
@@ -715,27 +829,205 @@ export default class ContentHealthManager extends React.Component<IContentHealth
   }
 
   private async ShowPagePermissions(): Promise<void> {
-    if (!this.state.selectedPage) {
+    const site = this.GetSelectedSite();
+    if (!site) {
+      console.warn('No site selected. Please select a site first.');
       return;
     }
-    this.setState({ isPagePermissionsOpen: true, isLoadingPagePermissions: true, pagePermissions: [], pagePermissionsError: null });
+    this.setState({
+      isPagePermissionsOpen: true,
+      isLoadingPagePermissions: true,
+      pagePermissions: [],
+      pagePermissionsError: null,
+      permissionGroupTree: [],
+      openTreeNodeKeys: new Set<string>(),
+      selectedTreeNodeKey: 'root',
+      groupMemberCache: new Map<string, ResolvedGroupUser[]>(),
+      groupMembersError: null,
+      currentArtefact: null,
+      permissionsSubjectTitle: this.state.selectedPage ? (this.state.selectedPage.title || this.state.selectedPage.name || '') : strings.PagesLibraryLabel,
+      isCheckingPrincipalAccess: false,
+      principalAccessResult: null,
+      principalAccessError: null
+    });
     try {
-      const site = this.GetSelectedSite();
-      if (!site) {
-        throw new Error('No site is selected.');
+      let artefact: SharePointArtefact;
+      if (this.state.selectedPage) {
+        if (!this.state.selectedPage.webUrl) {
+          throw new Error('The selected page has no URL.');
+        }
+        artefact = await this.permissionsManager.resolveArtefactFromFileUrl(site.url, this.state.selectedPage.webUrl);
+      } else {
+        artefact = await this.permissionsManager.resolvePagesLibraryArtefact(site.url);
       }
-      if (!this.state.selectedPage.webUrl) {
-        throw new Error('The selected page has no URL.');
-      }
-      const artefact = await this.permissionsManager.resolveArtefactFromFileUrl(site.url, this.state.selectedPage.webUrl);
       const permissions = await this.permissionsManager.get4ArtefactPermissions(artefact);
-      this.setState({ pagePermissions: permissions });
+      const groupTree = permissions.filter(p => p.isGroup).map(p => this.buildGroupNode(p, artefact.webUrl));
+      this.setState({ pagePermissions: permissions, permissionGroupTree: groupTree, currentArtefact: artefact });
     } catch (error) {
       console.error('Error retrieving page permissions:', error);
       this.setState({ pagePermissionsError: error instanceof Error ? error.message : String(error) });
     } finally {
       this.setState({ isLoadingPagePermissions: false });
     }
+  }
+
+  private async checkPrincipalAccess(item: IPeoplePickerUserItem): Promise<void> {
+    if (!this.state.currentArtefact) {
+      return;
+    }
+    this.setState({ isCheckingPrincipalAccess: true, principalAccessResult: null, principalAccessError: null });
+    try {
+      const report = await this.permissionsManager.checkAccess4Principal({ id: item.id, displayName: item.text }, this.state.currentArtefact);
+      this.setState({ principalAccessResult: { displayName: item.text, hasAccess: report.hasAccess, permissionInfo: report.permissionInfo } });
+    } catch (error) {
+      console.error('Error checking principal access:', error);
+      this.setState({ principalAccessError: error instanceof Error ? error.message : String(error) });
+    } finally {
+      this.setState({ isCheckingPrincipalAccess: false });
+    }
+  }
+
+  private getPermissionLevelLabel(info: SharePointPermissionInfo): string {
+    if (info.hasFullControl || info.canManagePermissions) {
+      return strings.FullControlLabel;
+    }
+    if (info.canManageLists) {
+      return strings.DesignLabel;
+    }
+    if (info.canEdit) {
+      return strings.EditLabel;
+    }
+    if (info.canContribute) {
+      return strings.ContributeLabel;
+    }
+    if (info.canView) {
+      return strings.ReadLabel;
+    }
+    return strings.NoAccessLevelLabel;
+  }
+
+  private buildGroupNode(source: SharePointPrincipalPermission | SharePointGroupInfo, webUrl: string): IPermissionGroupNode {
+    const groupInfo: SharePointGroupInfo = 'webUrl' in source
+      ? source
+      : {
+          webUrl,
+          principalId: source.principalId,
+          principalType: source.principalType,
+          loginName: source.loginName,
+          displayName: source.displayName
+        };
+    const key = groupInfo.principalId !== undefined ? `id:${groupInfo.principalId}` : `login:${groupInfo.loginName}`;
+    return { key, groupInfo, children: undefined };
+  }
+
+  private findTreeNode(nodes: IPermissionGroupNode[], key: string): IPermissionGroupNode | undefined {
+    for (const node of nodes) {
+      if (node.key === key) {
+        return node;
+      }
+      if (node.children) {
+        const found = this.findTreeNode(node.children, key);
+        if (found) {
+          return found;
+        }
+      }
+    }
+    return undefined;
+  }
+
+  private updateTreeNode(nodes: IPermissionGroupNode[], key: string, patch: Partial<IPermissionGroupNode>): IPermissionGroupNode[] {
+    return nodes.map(node => {
+      if (node.key === key) {
+        return { ...node, ...patch };
+      }
+      if (node.children) {
+        return { ...node, children: this.updateTreeNode(node.children, key, patch) };
+      }
+      return node;
+    });
+  }
+
+  private handleTreeOpenChange = (_event: TreeOpenChangeEvent, data: TreeOpenChangeData): void => {
+    const openKeys = data.openItems as Set<string>;
+    this.setState({ openTreeNodeKeys: openKeys });
+
+    if (data.open) {
+      const node = this.findTreeNode(this.state.permissionGroupTree, String(data.value));
+      if (node && node.children === undefined && !node.isLoadingChildren) {
+        void this.loadNestedGroups(node);
+      }
+    }
+  }
+
+  private async loadNestedGroups(node: IPermissionGroupNode): Promise<void> {
+    this.setState({ permissionGroupTree: this.updateTreeNode(this.state.permissionGroupTree, node.key, { isLoadingChildren: true, loadError: null }) });
+    try {
+      const nestedGroups = await this.permissionsManager.resolveNestedGroups(node.groupInfo);
+      const children = nestedGroups.map(g => this.buildGroupNode(g, node.groupInfo.webUrl));
+      this.setState({ permissionGroupTree: this.updateTreeNode(this.state.permissionGroupTree, node.key, { children, isLoadingChildren: false }) });
+    } catch (error) {
+      console.error('Error resolving nested groups:', error);
+      const message = error instanceof Error ? error.message : String(error);
+      this.setState({ permissionGroupTree: this.updateTreeNode(this.state.permissionGroupTree, node.key, { isLoadingChildren: false, loadError: message }) });
+    }
+  }
+
+  private selectTreeNode(key: string, groupInfo?: SharePointGroupInfo): void {
+    this.setState({ selectedTreeNodeKey: key });
+    if (key === 'root' || !groupInfo) {
+      return;
+    }
+    if (this.state.groupMemberCache.has(key)) {
+      return;
+    }
+    void this.loadGroupMembers(key, groupInfo);
+  }
+
+  private async loadGroupMembers(key: string, groupInfo: SharePointGroupInfo): Promise<void> {
+    this.setState({ isLoadingGroupMembers: true, groupMembersError: null });
+    try {
+      const users = await this.permissionsManager.resolveUser4Group(groupInfo);
+      const cache = new Map(this.state.groupMemberCache);
+      cache.set(key, users);
+      this.setState({ groupMemberCache: cache });
+    } catch (error) {
+      console.error('Error resolving group members:', error);
+      this.setState({ groupMembersError: error instanceof Error ? error.message : String(error) });
+    } finally {
+      this.setState({ isLoadingGroupMembers: false });
+    }
+  }
+
+  private renderGroupTreeNode(node: IPermissionGroupNode): JSX.Element {
+    return (
+      <TreeItem itemType="branch" value={node.key} key={node.key}>
+        <TreeItemLayout
+          onClick={() => this.selectTreeNode(node.key, node.groupInfo)}
+          style={this.state.selectedTreeNodeKey === node.key ? { background: '#e0e0e0' } : undefined}
+          iconBefore={<PeopleTeam16Regular />}
+        >
+          {node.groupInfo.displayName}
+        </TreeItemLayout>
+        <Tree>
+          {node.isLoadingChildren && (
+            <TreeItem itemType="leaf" value={`${node.key}-loading`}>
+              <TreeItemLayout><Spinner size="tiny" /></TreeItemLayout>
+            </TreeItem>
+          )}
+          {node.loadError && (
+            <TreeItem itemType="leaf" value={`${node.key}-error`}>
+              <TreeItemLayout><span style={{ color: '#d32f2f' }}>{node.loadError}</span></TreeItemLayout>
+            </TreeItem>
+          )}
+          {node.children?.length === 0 && (
+            <TreeItem itemType="leaf" value={`${node.key}-empty`}>
+              <TreeItemLayout>{strings.NoNestedGroups}</TreeItemLayout>
+            </TreeItem>
+          )}
+          {node.children?.map(child => this.renderGroupTreeNode(child))}
+        </Tree>
+      </TreeItem>
+    );
   }
 
   private async StartBrokenLinkProcess(): Promise<void>

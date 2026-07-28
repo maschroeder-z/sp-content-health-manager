@@ -95,6 +95,8 @@ declare interface IContentHealthManagerWebPartStrings {
   // Page Permissions Dialog
   PermissionsButtonLabel: string;
   PagePermissionsTitle: string;
+  PagesLibraryLabel: string;
+  TooltipShowLibraryPermissions: string;
   PrincipalNameLabel: string;
   PrincipalTypeLabel: string;
   LoginNameLabel: string;
@@ -102,6 +104,17 @@ declare interface IContentHealthManagerWebPartStrings {
   GroupLabel: string;
   UserLabel: string;
   NoPermissionsFound: string;
+  NoNestedGroups: string;
+  EmailLabel: string;
+  SearchUserOrGroupPlaceholder: string;
+  HasAccessLabel: string;
+  NoAccessLabel: string;
+  FullControlLabel: string;
+  DesignLabel: string;
+  EditLabel: string;
+  ContributeLabel: string;
+  ReadLabel: string;
+  NoAccessLevelLabel: string;
   // View Fields
   FoundLabel: string;
   StartQueryForResults: string;

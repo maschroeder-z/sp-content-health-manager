@@ -32,6 +32,24 @@ export interface SharePointPrincipalPermission {
   roles: string[];            // RoleDefinitionBindings[].Name, e.g. ["Full Control", "Read"]
 }
 
+/** Input to PermissionsManager.resolveUser4Group. Compatible with a SharePointPrincipalPermission
+ *  plus the webUrl it was scoped to (SP groups are web-scoped, so the REST call needs it). */
+export interface SharePointGroupInfo {
+  webUrl: string;              // absolute URL of the web the group is scoped to
+  principalId?: number;        // SP.Group Id (site-scoped); required when principalType is SharePointGroup
+  principalType: PrincipalType;
+  loginName?: string;          // claims login name; required to detect/resolve an Entra group, e.g. c:0t.c|tenant|<aadGroupId>
+  displayName?: string;
+}
+
+/** One user resolved from a SharePoint or Entra group. */
+export interface ResolvedGroupUser {
+  id: string;                  // AAD object id (Entra-resolved) or SP.User Id as string (SharePoint-group-resolved)
+  displayName: string;
+  email?: string;
+  loginName?: string;          // SharePoint claims login name; present for SharePoint-group-resolved users
+}
+
 // Curated subset of SP.PermissionKind (real CSOM numeric values, 1-based bit positions).
 export enum PermissionKind {
   ViewListItems = 1,
@@ -56,4 +74,16 @@ export interface SharePointPermissionInfo {
   canManagePermissions: boolean;
   hasFullControl: boolean;
   rawMask: { high: number; low: number };
+}
+
+/** A principal picked from a search UI (SharePoint REST people/group picker). */
+export interface PrincipalReference {
+  id: string;           // claims login name (user or Entra/security group) OR a numeric SharePoint group id
+  displayName: string;
+}
+
+/** Result of PermissionsManager.checkAccess4Principal. */
+export interface PrincipalAccessReport {
+  hasAccess: boolean;
+  permissionInfo: SharePointPermissionInfo;
 }
