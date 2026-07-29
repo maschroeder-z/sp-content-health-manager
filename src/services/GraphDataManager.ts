@@ -194,7 +194,7 @@ export class GraphDataManager {
       const response = await client
         .api(`/sites/${encodeURIComponent(site.id)}/lists/${listID}/items`)
         .version('v1.0')
-        .filter('fields/CheckoutUser ne null')
+        .filter('fields/CheckoutUserLookupId ne null')
         .expand('fields')
         .select(['id', 'fields'])
         .get();

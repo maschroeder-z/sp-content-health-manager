@@ -225,7 +225,7 @@ var GraphDataManager = /** @class */ (function () {
                         return [4 /*yield*/, client
                                 .api("/sites/".concat(encodeURIComponent(site.id), "/lists/").concat(listID, "/items"))
                                 .version('v1.0')
-                                .filter('fields/CheckoutUser ne null')
+                                .filter('fields/CheckoutUserLookupId ne null')
                                 .expand('fields')
                                 .select(['id', 'fields'])
                                 .get()];

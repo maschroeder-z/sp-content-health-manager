@@ -21,6 +21,8 @@ declare interface IContentHealthManagerWebPartStrings {
   BrokenLinksInPages: string;
   OldContentForDate: string;
   CheckedOutContentItems: string;
+  PagesWaitingForApproval: string;
+  FourthCheckPermissions: string;
   // Site Selection
   SelectFirstAllSites: string;
   SelectSitesLabel: string;

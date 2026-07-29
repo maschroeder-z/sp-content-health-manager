@@ -1,7 +1,7 @@
 {
   "$schema": "https://developer.microsoft.com/json-schemas/spfx-build/package-solution.schema.json",
   "solution": {
-    "name": "content-health-manager",
+    "name": "centralized-content-health-manager",
     "id": "61faf8a2-2f3f-49f0-993e-fa1db6c70fb2",
     "version": "1.0.0.0",
     "includeClientSideAssets": true,
@@ -38,7 +38,7 @@
     },
     "features": [
       {
-        "title": "Content Health Manager",
+        "title": "Centralized Content Health Manager",
         "description": "Activates the Content Health Manager web part, which audits SharePoint pages and libraries for broken links, unique permissions, checked-out files, and pages awaiting approval.",
         "id": "ac57c893-8be0-4d4e-9b78-7367235289b2",
         "version": "1.0.0.0"

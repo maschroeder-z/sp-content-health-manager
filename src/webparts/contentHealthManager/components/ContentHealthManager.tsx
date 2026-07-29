@@ -14,7 +14,7 @@ import { PageProcessing } from '../../../Core/PageProcessing';
 import { Page } from '../../../models/Page';
 import { PageResult } from '../../../models/PageResult';
 import type { LinkInfo } from '../../../models/LinkInfo';
-import { CheckmarkCircleColor, CheckmarkCircleHintRegular, FlagPrideIntersexInclusiveProgressFilled, QuestionCircleColor, WarningColor, Search24Regular, DataTrending24Regular, List24Regular, Link24Regular, Clock24Regular, LockClosed24Regular, LockOpen24Regular, ChevronDown24Regular, ChevronUp24Regular, DatabaseSearch24Regular, Open24Regular, Dismiss24Regular, KeyMultiple24Regular, Info24Regular, PeopleTeam16Regular, Person16Regular } from "@fluentui/react-icons";
+import { CheckmarkCircleColor, CheckmarkCircleHintRegular, FlagPrideIntersexInclusiveProgressFilled, QuestionCircleColor, WarningColor, Search24Regular, DataTrending24Regular, List24Regular, Link24Regular, Clock24Regular, LockClosed24Regular, LockOpen24Regular, ChevronDown24Regular, ChevronUp24Regular, DatabaseSearch24Regular, Open24Regular, Dismiss24Regular, KeyMultiple24Regular, Info24Regular, PeopleTeam16Regular, Person16Regular, DocumentCheckmark24Regular } from "@fluentui/react-icons";
 import { ListInformation } from '../../../models/REST/ListInformation';
 import PermissionsManager from '../../../services/PermissionsManager';
 import { PageStatusInfo, ResolvedGroupUser, SharePointArtefact, SharePointArtefactType, SharePointGroupInfo, SharePointPermissionInfo, SharePointPrincipalPermission } from '../../../models/REST/Permissions';
@@ -102,26 +102,31 @@ export default class ContentHealthManager extends React.Component<IContentHealth
   ]
   dataManager: GraphDataManager;
   permissionsManager: PermissionsManager;
+  // The SitePicker's built-in "clear all" (x) icon only clears its own internal
+  // selection state and never invokes the onChange prop, so we detect that click
+  // directly in the DOM (capture phase, before the icon's own handler stops
+  // propagation) to keep our app state in sync.
+  private sitePickerContainerRef: React.RefObject<HTMLDivElement> = React.createRef();
   // View fields for found items in library report dialog
   viewFieldsFoundItems: IViewField[] = [
-    { name: 'Id', displayName: 'ID', sorting: true, isResizable: true, minWidth: 80, linkPropertyName: 'webUrl' },
-    { name: 'Title', displayName: 'Title', sorting: true, isResizable: true, minWidth: 200 },
+    { name: 'Id', displayName: 'ID', sorting: true, isResizable: false, linkPropertyName: 'webUrl' },
+    { name: 'Title', displayName: 'Title', sorting: true, isResizable: true },
     {
-      name: 'Created', displayName: 'Created', sorting: true, isResizable: true, minWidth: 120,
+      name: 'Created', displayName: 'Created', sorting: true, isResizable: false,
       render: (item: any, index, column) => {
         const date = new Date(item.Created);
         return <FieldDateRenderer text={date.toLocaleDateString()} />;
       }
     },
     {
-      name: 'Modified', displayName: 'Modified', sorting: true, isResizable: true, minWidth: 120,
+      name: 'Modified', displayName: 'Modified', sorting: true, isResizable: true,
       render: (item: any, index, column) => {
         const date = new Date(item.Modified);
         return <FieldDateRenderer text={date.toLocaleDateString()} />;
       }
     },
     {
-      name: 'ContentTypeId', displayName: 'Content Type', sorting: true, isResizable: true, minWidth: 150,
+      name: 'ContentTypeId', displayName: 'Content Type', sorting: true, isResizable: true,
       render: (item: any, inxdex, column) => {
         if (typeof item.ContentType !== "undefined")
           return item.ContentType;
@@ -189,9 +194,8 @@ export default class ContentHealthManager extends React.Component<IContentHealth
   ];
 
   viewFieldsPage: IViewField[] = [
-    { name: 'title', displayName: 'Title', sorting: true, isResizable: true, minWidth: 100 },
-    { name: 'name', displayName: 'Name', sorting: true, isResizable: true, minWidth: 100 },
-    { name: 'webUrl', displayName: 'URL', sorting: false, isResizable: true, minWidth: 100 },
+    { name: 'title', displayName: 'Title', sorting: true, isResizable: true, minWidth: 50, linkPropertyName: 'webUrl' },
+    { name: 'name', displayName: 'Name', sorting: true, isResizable: true, minWidth: 200 },
     {
       name: 'Links', displayName: 'Links', sorting: false, isResizable: true,
       render: (item, index, column) => {
@@ -396,7 +400,12 @@ export default class ContentHealthManager extends React.Component<IContentHealth
                     <li><Link24Regular className={styles.inlineIcon} />{strings.BrokenLinksInPages}</li>
                     <li><Clock24Regular className={styles.inlineIcon} />{strings.OldContentForDate}</li>
                     <li><LockClosed24Regular className={styles.inlineIcon} />{strings.CheckedOutContentItems}</li>
+                    <li><DocumentCheckmark24Regular className={styles.inlineIcon} />{strings.PagesWaitingForApproval}</li>
                   </ul>
+                </li>
+                <li>
+                  <KeyMultiple24Regular className={styles.inlineIcon} />
+                  <strong>{strings.FourthCheckPermissions.split(' - ')[0]}</strong> - {strings.FourthCheckPermissions.split(' - ')[1]}
                 </li>
               </ol>
             </div>
@@ -407,20 +416,29 @@ export default class ContentHealthManager extends React.Component<IContentHealth
           <div className={styles['col-sm12']}>
             {this.state.SelectedSites.length === 0 && <p className={styles.infoMessage}><QuestionCircleColor />{strings.SelectFirstAllSites}</p>}
             <Field label={strings.SelectSitesLabel}>
-              <SitePicker
-                context={this.props.wpContext as any}
-                mode={'site'}
-                selectedSites={this.tempSelectedSites}
-                allowSearch={true}
-                multiSelect={true}
-                className={styles.sitePicker}
-                trimDuplicates={true}
-                onChange={(sites) => {
-                  console.log(sites);
-                  this.setState({ SelectedSites: sites as Site[] });
-                }}
-                placeholder={strings.SelectAllSitesPlaceholder}
-                searchPlaceholder={strings.FilterSitesPlaceholder} />
+              <div ref={this.sitePickerContainerRef}>
+                <SitePicker
+                  context={this.props.wpContext as any}
+                  mode={'site'}
+                  selectedSites={this.tempSelectedSites}
+                  allowSearch={true}
+                  multiSelect={true}
+                  className={styles.sitePicker}
+                  trimDuplicates={true}
+                  onChange={(sites) => {
+                    console.log(sites);
+                    const newSites = (sites || []) as Site[];
+                    const evaluatedSiteRemoved = this.state.selectedSiteId !== null
+                      && !newSites.some(s => s.id === this.state.selectedSiteId);
+                    if (newSites.length === 0 || evaluatedSiteRemoved) {
+                      this.resetAppState(newSites);
+                    } else {
+                      this.setState({ SelectedSites: newSites });
+                    }
+                  }}
+                  placeholder={strings.SelectAllSitesPlaceholder}
+                  searchPlaceholder={strings.FilterSitesPlaceholder} />
+              </div>
             </Field>
           </div>
           <div className={styles['col-sm12']}>
@@ -910,7 +928,18 @@ export default class ContentHealthManager extends React.Component<IContentHealth
   }
 
   public async componentDidMount(): Promise<void> {
+    this.sitePickerContainerRef.current?.addEventListener('click', this.handleSitePickerClearAllClick, true);
+  }
 
+  public componentWillUnmount(): void {
+    this.sitePickerContainerRef.current?.removeEventListener('click', this.handleSitePickerClearAllClick, true);
+  }
+
+  private handleSitePickerClearAllClick = (event: MouseEvent): void => {
+    const target = event.target as HTMLElement | null;
+    if (target?.closest('[data-icon-name="Cancel"]')) {
+      this.resetAppState([]);
+    }
   }
 
   private ShowLibraryReport(): void {
@@ -1313,7 +1342,58 @@ export default class ContentHealthManager extends React.Component<IContentHealth
     }
   }
 
+  private resetAppState(sites: Site[] = []): void {
+    this.resetTab1State();
+    this.setState({
+      SelectedSites: sites,
+      selectedSiteId: null,
+      selectedTabValue: null,
+      pageEntries: [],
+      dateStartDate: new Date(),
+      libraryEntries: [],
+      selectedLibrary: null,
+      isLibraryReportOpen: false,
+      selectedFoundItem: null,
+      isQueryingLibraries: false,
+      isFilteringLibraries: false,
+      chkShowLibaries: true,
+      chkShowLists: true
+    });
+  }
+
+  private resetTab1State(): void {
+    this.setState({
+      pageResults: [],
+      selectedPage: null,
+      isReportOpen: false,
+      isProcessingBrokenLinks: false,
+      expandedContentSections: new Set<string>(),
+      showOnlyBrokenLinks: false,
+      pageDetailsCache: new Map<string, PageStatusInfo>(),
+      isLoadingPageDetails: false,
+      pageDetailsLoaded: false,
+      pageDetailsError: null,
+      isPagePermissionsOpen: false,
+      pagePermissions: [],
+      isLoadingPagePermissions: false,
+      pagePermissionsError: null,
+      permissionGroupTree: [],
+      openTreeNodeKeys: new Set<string>(),
+      selectedTreeNodeKey: 'root',
+      groupMemberCache: new Map<string, ResolvedGroupUser[]>(),
+      isLoadingGroupMembers: false,
+      groupMembersError: null,
+      currentArtefact: null,
+      permissionsSubjectTitle: '',
+      permissionsSubjectUrl: null,
+      isCheckingPrincipalAccess: false,
+      principalAccessResult: null,
+      principalAccessError: null
+    });
+  }
+
   private onDropdDownSelectionChanged = async (event: any, data: any): Promise<void> => {
+    this.resetTab1State();
     const dataManager = new GraphDataManager(this.props.msGraphClientFactory, this.props.spHTTPClient);
     this.setState({ isFilteringLibraries: true });
     const pages = await dataManager.GetPages4Site(data.optionValue);

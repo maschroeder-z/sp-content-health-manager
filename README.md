@@ -1,4 +1,4 @@
-# sp-content-health-manager
+# centralized-content-health-manager
 
 ## Summary
 

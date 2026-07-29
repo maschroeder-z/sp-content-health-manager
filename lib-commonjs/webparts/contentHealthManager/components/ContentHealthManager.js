@@ -47,26 +47,31 @@ var ContentHealthManager = /** @class */ (function (_super) {
                 "url": "https://devsky365.sharepoint.com/sites/Hausfeen"
             }
         ];
+        // The SitePicker's built-in "clear all" (x) icon only clears its own internal
+        // selection state and never invokes the onChange prop, so we detect that click
+        // directly in the DOM (capture phase, before the icon's own handler stops
+        // propagation) to keep our app state in sync.
+        _this.sitePickerContainerRef = React.createRef();
         // View fields for found items in library report dialog
         _this.viewFieldsFoundItems = [
-            { name: 'Id', displayName: 'ID', sorting: true, isResizable: true, minWidth: 80, linkPropertyName: 'webUrl' },
-            { name: 'Title', displayName: 'Title', sorting: true, isResizable: true, minWidth: 200 },
+            { name: 'Id', displayName: 'ID', sorting: true, isResizable: false, linkPropertyName: 'webUrl' },
+            { name: 'Title', displayName: 'Title', sorting: true, isResizable: true },
             {
-                name: 'Created', displayName: 'Created', sorting: true, isResizable: true, minWidth: 120,
+                name: 'Created', displayName: 'Created', sorting: true, isResizable: false,
                 render: function (item, index, column) {
                     var date = new Date(item.Created);
                     return React.createElement(spfx_controls_react_1.FieldDateRenderer, { text: date.toLocaleDateString() });
                 }
             },
             {
-                name: 'Modified', displayName: 'Modified', sorting: true, isResizable: true, minWidth: 120,
+                name: 'Modified', displayName: 'Modified', sorting: true, isResizable: true,
                 render: function (item, index, column) {
                     var date = new Date(item.Modified);
                     return React.createElement(spfx_controls_react_1.FieldDateRenderer, { text: date.toLocaleDateString() });
                 }
             },
             {
-                name: 'ContentTypeId', displayName: 'Content Type', sorting: true, isResizable: true, minWidth: 150,
+                name: 'ContentTypeId', displayName: 'Content Type', sorting: true, isResizable: true,
                 render: function (item, inxdex, column) {
                     if (typeof item.ContentType !== "undefined")
                         return item.ContentType;
@@ -134,9 +139,8 @@ var ContentHealthManager = /** @class */ (function (_super) {
             { name: 'Description', displayName: 'Description', sorting: true, isResizable: true, minWidth: 100 }
         ];
         _this.viewFieldsPage = [
-            { name: 'title', displayName: 'Title', sorting: true, isResizable: true, minWidth: 100 },
-            { name: 'name', displayName: 'Name', sorting: true, isResizable: true, minWidth: 100 },
-            { name: 'webUrl', displayName: 'URL', sorting: false, isResizable: true, minWidth: 100 },
+            { name: 'title', displayName: 'Title', sorting: true, isResizable: true, minWidth: 50, linkPropertyName: 'webUrl' },
+            { name: 'name', displayName: 'Name', sorting: true, isResizable: true, minWidth: 200 },
             {
                 name: 'Links', displayName: 'Links', sorting: false, isResizable: true,
                 render: function (item, index, column) {
@@ -183,6 +187,12 @@ var ContentHealthManager = /** @class */ (function (_super) {
                 render: function (item) { return React.createElement("span", { title: item.loginName }, _this.formatLoginName(item.loginName)); }
             }
         ];
+        _this.handleSitePickerClearAllClick = function (event) {
+            var target = event.target;
+            if (target === null || target === void 0 ? void 0 : target.closest('[data-icon-name="Cancel"]')) {
+                _this.resetAppState([]);
+            }
+        };
         _this.handleTreeOpenChange = function (_event, data) {
             var openKeys = data.openItems;
             _this.setState({ openTreeNodeKeys: openKeys });
@@ -198,6 +208,7 @@ var ContentHealthManager = /** @class */ (function (_super) {
             return tslib_1.__generator(this, function (_a) {
                 switch (_a.label) {
                     case 0:
+                        this.resetTab1State();
                         dataManager = new GraphDataManager_1.default(this.props.msGraphClientFactory, this.props.spHTTPClient);
                         this.setState({ isFilteringLibraries: true });
                         return [4 /*yield*/, dataManager.GetPages4Site(data.optionValue)];
@@ -400,17 +411,34 @@ var ContentHealthManager = /** @class */ (function (_super) {
                                     strings.OldContentForDate),
                                 React.createElement("li", null,
                                     React.createElement(react_icons_1.LockClosed24Regular, { className: ContentHealthManager_module_scss_1.default.inlineIcon }),
-                                    strings.CheckedOutContentItems))))))),
+                                    strings.CheckedOutContentItems),
+                                React.createElement("li", null,
+                                    React.createElement(react_icons_1.DocumentCheckmark24Regular, { className: ContentHealthManager_module_scss_1.default.inlineIcon }),
+                                    strings.PagesWaitingForApproval))),
+                        React.createElement("li", null,
+                            React.createElement(react_icons_1.KeyMultiple24Regular, { className: ContentHealthManager_module_scss_1.default.inlineIcon }),
+                            React.createElement("strong", null, strings.FourthCheckPermissions.split(' - ')[0]),
+                            " - ",
+                            strings.FourthCheckPermissions.split(' - ')[1]))))),
             React.createElement("div", { className: ContentHealthManager_module_scss_1.default.row },
                 React.createElement("div", { className: ContentHealthManager_module_scss_1.default['col-sm12'] },
                     this.state.SelectedSites.length === 0 && React.createElement("p", { className: ContentHealthManager_module_scss_1.default.infoMessage },
                         React.createElement(react_icons_1.QuestionCircleColor, null),
                         strings.SelectFirstAllSites),
                     React.createElement(react_components_1.Field, { label: strings.SelectSitesLabel },
-                        React.createElement(SitePicker_1.SitePicker, { context: this.props.wpContext, mode: 'site', selectedSites: this.tempSelectedSites, allowSearch: true, multiSelect: true, className: ContentHealthManager_module_scss_1.default.sitePicker, trimDuplicates: true, onChange: function (sites) {
-                                console.log(sites);
-                                _this.setState({ SelectedSites: sites });
-                            }, placeholder: strings.SelectAllSitesPlaceholder, searchPlaceholder: strings.FilterSitesPlaceholder }))),
+                        React.createElement("div", { ref: this.sitePickerContainerRef },
+                            React.createElement(SitePicker_1.SitePicker, { context: this.props.wpContext, mode: 'site', selectedSites: this.tempSelectedSites, allowSearch: true, multiSelect: true, className: ContentHealthManager_module_scss_1.default.sitePicker, trimDuplicates: true, onChange: function (sites) {
+                                    console.log(sites);
+                                    var newSites = (sites || []);
+                                    var evaluatedSiteRemoved = _this.state.selectedSiteId !== null
+                                        && !newSites.some(function (s) { return s.id === _this.state.selectedSiteId; });
+                                    if (newSites.length === 0 || evaluatedSiteRemoved) {
+                                        _this.resetAppState(newSites);
+                                    }
+                                    else {
+                                        _this.setState({ SelectedSites: newSites });
+                                    }
+                                }, placeholder: strings.SelectAllSitesPlaceholder, searchPlaceholder: strings.FilterSitesPlaceholder })))),
                 React.createElement("div", { className: ContentHealthManager_module_scss_1.default['col-sm12'] },
                     this.state.SelectedSites.length > 0 && this.state.selectedSiteId === null && React.createElement("div", null,
                         React.createElement("p", { className: ContentHealthManager_module_scss_1.default.infoMessage },
@@ -711,10 +739,16 @@ var ContentHealthManager = /** @class */ (function (_super) {
     };
     ContentHealthManager.prototype.componentDidMount = function () {
         return tslib_1.__awaiter(this, void 0, void 0, function () {
-            return tslib_1.__generator(this, function (_a) {
+            var _a;
+            return tslib_1.__generator(this, function (_b) {
+                (_a = this.sitePickerContainerRef.current) === null || _a === void 0 ? void 0 : _a.addEventListener('click', this.handleSitePickerClearAllClick, true);
                 return [2 /*return*/];
             });
         });
+    };
+    ContentHealthManager.prototype.componentWillUnmount = function () {
+        var _a;
+        (_a = this.sitePickerContainerRef.current) === null || _a === void 0 ? void 0 : _a.removeEventListener('click', this.handleSitePickerClearAllClick, true);
     };
     ContentHealthManager.prototype.ShowLibraryReport = function () {
         if (!this.state.selectedLibrary) {
@@ -1248,6 +1282,55 @@ var ContentHealthManager = /** @class */ (function (_super) {
                     case 4: return [2 /*return*/];
                 }
             });
+        });
+    };
+    ContentHealthManager.prototype.resetAppState = function (sites) {
+        if (sites === void 0) { sites = []; }
+        this.resetTab1State();
+        this.setState({
+            SelectedSites: sites,
+            selectedSiteId: null,
+            selectedTabValue: null,
+            pageEntries: [],
+            dateStartDate: new Date(),
+            libraryEntries: [],
+            selectedLibrary: null,
+            isLibraryReportOpen: false,
+            selectedFoundItem: null,
+            isQueryingLibraries: false,
+            isFilteringLibraries: false,
+            chkShowLibaries: true,
+            chkShowLists: true
+        });
+    };
+    ContentHealthManager.prototype.resetTab1State = function () {
+        this.setState({
+            pageResults: [],
+            selectedPage: null,
+            isReportOpen: false,
+            isProcessingBrokenLinks: false,
+            expandedContentSections: new Set(),
+            showOnlyBrokenLinks: false,
+            pageDetailsCache: new Map(),
+            isLoadingPageDetails: false,
+            pageDetailsLoaded: false,
+            pageDetailsError: null,
+            isPagePermissionsOpen: false,
+            pagePermissions: [],
+            isLoadingPagePermissions: false,
+            pagePermissionsError: null,
+            permissionGroupTree: [],
+            openTreeNodeKeys: new Set(),
+            selectedTreeNodeKey: 'root',
+            groupMemberCache: new Map(),
+            isLoadingGroupMembers: false,
+            groupMembersError: null,
+            currentArtefact: null,
+            permissionsSubjectTitle: '',
+            permissionsSubjectUrl: null,
+            isCheckingPrincipalAccess: false,
+            principalAccessResult: null,
+            principalAccessError: null
         });
     };
     ContentHealthManager.prototype.GetSelectedSite = function () {

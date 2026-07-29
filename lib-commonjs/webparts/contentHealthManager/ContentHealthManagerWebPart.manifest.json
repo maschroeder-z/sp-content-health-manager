@@ -3,30 +3,37 @@
   "id": "96612611-2584-411f-bcf3-2c19a26eb6bc",
   "alias": "ContentHealthManagerWebPart",
   "componentType": "WebPart",
-
   // The "*" signifies that the version should be taken from the package.json
   "version": "*",
   "manifestVersion": 2,
-
   // If true, the component can only be installed on sites where Custom Script is allowed.
   // Components that allow authors to embed arbitrary script code should set this to true.
   // https://support.office.com/en-us/article/Turn-scripting-capabilities-on-or-off-1f2c515f-5d7e-448a-9fd7-835da935584f
   "requiresCustomScript": false,
-  "supportedHosts": ["SharePointWebPart", "SharePointFullPage"],
+  "supportedHosts": [
+    "SharePointWebPart",
+    "SharePointFullPage"
+  ],
   "supportsThemeVariants": true,
   "supportsFullBleed": true,
-
-  "preconfiguredEntries": [{
-    "groupId": "5c03119e-3074-46fd-976b-c60198311f70", // Advanced
-    "group": { "default": "Advanced", "de-DE": "Erweitert" },
-    "title": { "default": "Content Health Manager" },
-    "description": {
-      "default": "Audit your SharePoint site's pages and libraries for broken links, unique permissions, checked-out files, and pages awaiting approval.",
-      "de-DE": "Prüft die Seiten und Bibliotheken Ihrer SharePoint-Website auf defekte Links, eindeutige Berechtigungen, ausgecheckte Dateien und Seiten, die auf Genehmigung warten."
-    },
-    "officeFabricIconFontName": "Page",
-    "properties": {
-      "description": "ContentHealthManager"
+  "preconfiguredEntries": [
+    {
+      "groupId": "5c03119e-3074-46fd-976b-c60198311f70", // Advanced
+      "group": {
+        "default": "Advanced",
+        "de-DE": "Erweitert"
+      },
+      "title": {
+        "default": "Centralized Content Health Manager"
+      },
+      "description": {
+        "default": "Audit your SharePoint site's pages and libraries for broken links, unique permissions, overall permissions, checked-out files, and pages awaiting approval.",
+        "de-DE": "Prüft die Seiten und Bibliotheken Ihrer SharePoint-Website auf defekte Links, eindeutige Berechtigungen, Gesamtberechtigungen, ausgecheckte Dateien und Seiten, die auf Genehmigung warten."
+      },
+      "officeFabricIconFontName": "Page",
+      "properties": {
+        "description": "ContentHealthManager"
+      }
     }
-  }]
+  ]
 }
