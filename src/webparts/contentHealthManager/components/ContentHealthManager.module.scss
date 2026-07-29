@@ -71,6 +71,21 @@ https://learn.microsoft.com/en-us/sharepoint/dev/spfx/office-ui-fabric-integrati
   gap: 8px;
 }
 
+.libraryActionsRow {
+  display: flex;
+  align-items: center;
+  justify-content: flex-start;
+  flex-wrap: wrap;
+  gap: 12px;
+}
+
+.libraryActionsButtons {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
 .progressSpinner {
   margin-left: 4px;
 }
@@ -80,6 +95,7 @@ https://learn.microsoft.com/en-us/sharepoint/dev/spfx/office-ui-fabric-integrati
   align-items: center;
   justify-content: flex-end;
   gap: 16px;
+  margin-left: auto;
 }
 
 

@@ -53,6 +53,7 @@ define([], function() {
     "TooltipCloseDialog": "Schließt diesen Dialog",
     "TooltipToggleContent": "Zeigt oder verbirgt den erfassten Seiteninhalt rund um diesen Link",
     "TooltipLoadPageDetails": "Genehmigungs-, Berechtigungs- und Auscheckstatus für alle Seiten in der Liste laden",
+    "TooltipShowSelectedLibraryPermissions": "Zeigt die SharePoint-Berechtigungen für die ausgewählte Bibliothek",
     "PageReportTitle": "Seitenbericht",
     "TitleLabel": "Titel:",
     "UrlLabel": "URL:",

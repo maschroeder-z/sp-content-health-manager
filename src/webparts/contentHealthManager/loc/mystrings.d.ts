@@ -58,6 +58,7 @@ declare interface IContentHealthManagerWebPartStrings {
   TooltipCloseDialog: string;
   TooltipToggleContent: string;
   TooltipLoadPageDetails: string;
+  TooltipShowSelectedLibraryPermissions: string;
   // Page Report Dialog
   PageReportTitle: string;
   TitleLabel: string;

@@ -1,41 +1,51 @@
 {
   "$schema": "https://developer.microsoft.com/json-schemas/spfx-build/package-solution.schema.json",
   "solution": {
-    "name": "sp-content-health-manager-client-side-solution",
+    "name": "content-health-manager",
     "id": "61faf8a2-2f3f-49f0-993e-fa1db6c70fb2",
     "version": "1.0.0.0",
     "includeClientSideAssets": true,
-    "skipFeatureDeployment": true,    
+    "skipFeatureDeployment": true,
     "isDomainIsolated": false,
     "iconPath": "assets/96x96.png",
+    "supportedLocales": [
+      "en-US",
+      "de-DE"
+    ],
     "developer": {
-      "name": "Marc Andre Schröder-Zhou",
+      "name": "dev-sky.net",
       "websiteUrl": "https://www.dev-sky.net",
-      "privacyUrl": "",
-      "termsOfUseUrl": "https://go.microsoft.com/fwlink/?linkid=2041178",
+      "privacyUrl": "https://www.dev-sky.net/PrivacyPolicy/app-privacy.html",
+      "termsOfUseUrl": "https://www.dev-sky.net/PrivacyPolicy/app-terms.html",
       "mpnId": "6499491"
     },
     "metadata": {
       "shortDescription": {
-        "default": "sp-content-health-manager description"
+        "default": "Audit SharePoint pages and libraries for broken links, unique permissions, and checked-out files.",
+        "de-DE": "Prüfung von SharePoint-Seiten und -Bibliotheken auf defekte Links, Berechtigungen und Checkouts."
       },
       "longDescription": {
-        "default": "sp-content-health-manager description"
+        "default": "Content Health Manager helps SharePoint site owners, content managers, and IT administrators keep modern SharePoint sites clean, secure, and search-ready. Select one or more site collections to get a consolidated view of their pages and document libraries: scan pages for broken links, see which pages have unpublished draft changes awaiting approval, identify pages and libraries with unique (non-inherited) permissions, see which files and pages are checked out and by whom, and look up a specific user's or group's effective permissions on any page or library. For document libraries, find items that haven't changed since a given date and review currently checked-out items. The add-in reads data through the SharePoint REST API and Microsoft Graph using the signed-in user's own permissions - it does not modify site content or permissions. Requires SharePoint Online and at least Read access to the sites being reviewed; viewing detailed role assignments on a site requires Manage Permissions rights there.",
+        "de-DE": "Content Health Manager hilft SharePoint-Seitenbesitzern, Content-Verantwortlichen und IT-Administratoren dabei, moderne SharePoint-Websites sauber, sicher und suchbereit zu halten. Wählen Sie eine oder mehrere Websitesammlungen aus, um eine konsolidierte Übersicht über deren Seiten und Dokumentbibliotheken zu erhalten: Seiten auf defekte Links prüfen, erkennen, welche Seiten unveröffentlichte Entwurfsänderungen haben, die auf eine Genehmigung warten, Seiten und Bibliotheken mit eindeutigen (nicht geerbten) Berechtigungen identifizieren, sehen, welche Dateien und Seiten ausgecheckt sind und von wem, sowie die effektiven Berechtigungen eines bestimmten Benutzers oder einer Gruppe für eine beliebige Seite oder Bibliothek nachschlagen. Für Dokumentbibliotheken lassen sich Elemente finden, die seit einem bestimmten Datum nicht geändert wurden, sowie aktuell ausgecheckte Elemente einsehen. Die App liest Daten über die SharePoint-REST-API und Microsoft Graph mit den Berechtigungen des angemeldeten Benutzers - sie ändert weder Inhalte noch Berechtigungen. Erfordert SharePoint Online und mindestens Lesezugriff auf die überprüften Websites; zum Anzeigen detaillierter Rollenzuweisungen auf einer Website sind dort Berechtigungen zum Verwalten von Berechtigungen erforderlich."
       },
       "screenshotPaths": [],
       "videoUrl": "",
-      "categories": []
+      "categories": [
+        "Content management",
+        "Productivity",
+        "Site Design"
+      ]
     },
     "features": [
       {
         "title": "Content Health Manager",
-        "description": "The feature that activates elements of the Content Health Manager solution.",
+        "description": "Activates the Content Health Manager web part, which audits SharePoint pages and libraries for broken links, unique permissions, checked-out files, and pages awaiting approval.",
         "id": "ac57c893-8be0-4d4e-9b78-7367235289b2",
         "version": "1.0.0.0"
       }
     ]
   },
   "paths": {
-    "zippedPackage": "solution/sp-content-health-manager.sppkg"
+    "zippedPackage": "solution/dev-sky-content-health-manager.sppkg"
   }
 }

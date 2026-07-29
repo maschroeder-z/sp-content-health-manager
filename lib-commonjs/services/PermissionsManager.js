@@ -259,7 +259,7 @@ var PermissionsManager = /** @class */ (function () {
                             ? file.CheckedOutByUser.Title
                             : null;
                         return [2 /*return*/, {
-                                needsApproval: (file === null || file === void 0 ? void 0 : file.Level) === 'Draft',
+                                needsApproval: (file === null || file === void 0 ? void 0 : file.Level) === 1, //'Draft',
                                 hasUniquePermission: !!(entity === null || entity === void 0 ? void 0 : entity.HasUniqueRoleAssignments),
                                 checkedOutBy: checkedOutBy
                             }];

@@ -53,6 +53,7 @@ define([], function() {
     "TooltipCloseDialog": "Close this dialog",
     "TooltipToggleContent": "Show or hide the raw page content captured around this link",
     "TooltipLoadPageDetails": "Load approval, permission and checkout status for every page in the list",
+    "TooltipShowSelectedLibraryPermissions": "Show the SharePoint permissions for the selected library",
     "PageReportTitle": "Page report",
     "TitleLabel": "Title:",
     "UrlLabel": "URL:",

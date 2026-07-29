@@ -231,7 +231,7 @@ export class PermissionsManager {
         : null;
 
       return {
-        needsApproval: file?.Level === 'Draft',
+        needsApproval: file?.Level === 1, //'Draft',
         hasUniquePermission: !!entity?.HasUniqueRoleAssignments,
         checkedOutBy
       };
@@ -439,7 +439,7 @@ export class PermissionsManager {
    */
   private async resolveNearestSecurableBaseUrl(artefact: SharePointArtefact): Promise<string> {
     let current: SharePointArtefact = artefact;
-    for (;;) {
+    for (; ;) {
       const base = this.buildBaseUrl(current);
       if (current.type === SharePointArtefactType.Web || await this.getHasUniqueRoleAssignments(base)) {
         return base;

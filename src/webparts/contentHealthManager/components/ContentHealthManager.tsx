@@ -14,10 +14,10 @@ import { PageProcessing } from '../../../Core/PageProcessing';
 import { Page } from '../../../models/Page';
 import { PageResult } from '../../../models/PageResult';
 import type { LinkInfo } from '../../../models/LinkInfo';
-import { CheckmarkCircleColor, CheckmarkCircleHintRegular, FlagPrideIntersexInclusiveProgressFilled, QuestionCircleColor, WarningColor, Search24Regular, DataTrending24Regular, List24Regular, Link24Regular, Clock24Regular, LockClosed24Regular, ChevronDown24Regular, ChevronUp24Regular, DatabaseSearch24Regular, Open24Regular, Dismiss24Regular, KeyMultiple24Regular, Info24Regular, PeopleTeam16Regular, Person16Regular } from "@fluentui/react-icons";
+import { CheckmarkCircleColor, CheckmarkCircleHintRegular, FlagPrideIntersexInclusiveProgressFilled, QuestionCircleColor, WarningColor, Search24Regular, DataTrending24Regular, List24Regular, Link24Regular, Clock24Regular, LockClosed24Regular, LockOpen24Regular, ChevronDown24Regular, ChevronUp24Regular, DatabaseSearch24Regular, Open24Regular, Dismiss24Regular, KeyMultiple24Regular, Info24Regular, PeopleTeam16Regular, Person16Regular } from "@fluentui/react-icons";
 import { ListInformation } from '../../../models/REST/ListInformation';
 import PermissionsManager from '../../../services/PermissionsManager';
-import { PageStatusInfo, ResolvedGroupUser, SharePointArtefact, SharePointGroupInfo, SharePointPermissionInfo, SharePointPrincipalPermission } from '../../../models/REST/Permissions';
+import { PageStatusInfo, ResolvedGroupUser, SharePointArtefact, SharePointArtefactType, SharePointGroupInfo, SharePointPermissionInfo, SharePointPrincipalPermission } from '../../../models/REST/Permissions';
 import { FieldDateRenderer, FieldTextRenderer } from '@pnp/spfx-controls-react';
 import { ListTemplateType } from '../../../Core/ListTemplateTypes';
 import * as strings from 'ContentHealthManagerWebPartStrings';
@@ -63,6 +63,7 @@ interface IContentHealthManagerState {
   groupMembersError?: string | null;
   currentArtefact: SharePointArtefact | null;
   permissionsSubjectTitle: string;
+  permissionsSubjectUrl: string | null;
   isCheckingPrincipalAccess?: boolean;
   principalAccessResult: { displayName: string; hasAccess: boolean; permissionInfo: SharePointPermissionInfo } | null;
   principalAccessError?: string | null;
@@ -188,11 +189,11 @@ export default class ContentHealthManager extends React.Component<IContentHealth
   ];
 
   viewFieldsPage: IViewField[] = [
-    { name: 'title', displayName: 'Title', sorting: true, isResizable: true, minWidth: 120 },
+    { name: 'title', displayName: 'Title', sorting: true, isResizable: true, minWidth: 100 },
     { name: 'name', displayName: 'Name', sorting: true, isResizable: true, minWidth: 100 },
-    { name: 'webUrl', displayName: 'URL', sorting: false, isResizable: true, minWidth: 200 },
+    { name: 'webUrl', displayName: 'URL', sorting: false, isResizable: true, minWidth: 100 },
     {
-      name: 'Links', displayName: 'Links', sorting: false, isResizable: true, minWidth: 200,
+      name: 'Links', displayName: 'Links', sorting: false, isResizable: true,
       render: (item, index, column) => {
         const entry = this.state.pageResults.filter(x => x.pageID === item.id)[0];
 
@@ -230,9 +231,12 @@ export default class ContentHealthManager extends React.Component<IContentHealth
           if (!status) {
             return <></>;
           }
-          return status.needsApproval
-            ? <><WarningColor />&nbsp;<span>{strings.Yes}</span></>
-            : <><CheckmarkCircleColor />&nbsp;<span>{strings.No}</span></>;
+          return (
+            <span style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
+              {status.needsApproval ? <WarningColor /> : <CheckmarkCircleColor />}
+              <span>{status.needsApproval ? strings.Yes : strings.No}</span>
+            </span>
+          );
         }
       },
       {
@@ -242,9 +246,12 @@ export default class ContentHealthManager extends React.Component<IContentHealth
           if (!status) {
             return <></>;
           }
-          return status.hasUniquePermission
-            ? <><LockClosed24Regular />&nbsp;<span>{strings.Yes}</span></>
-            : <span>{strings.No}</span>;
+          return (
+            <span style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
+              {status.hasUniquePermission ? <LockClosed24Regular /> : <LockOpen24Regular />}
+              <span>{status.hasUniquePermission ? strings.Yes : strings.No}</span>
+            </span>
+          );
         }
       },
       {
@@ -254,9 +261,12 @@ export default class ContentHealthManager extends React.Component<IContentHealth
           if (!status) {
             return <></>;
           }
-          return status.checkedOutBy
-            ? <><Person16Regular />&nbsp;<span>{status.checkedOutBy}</span></>
-            : <span>{strings.NotCheckedOut}</span>;
+          return (
+            <span style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
+              {status.checkedOutBy ? <Person16Regular /> : <CheckmarkCircleColor />}
+              <span>{status.checkedOutBy || strings.NotCheckedOut}</span>
+            </span>
+          );
         }
       }
     ];
@@ -338,6 +348,7 @@ export default class ContentHealthManager extends React.Component<IContentHealth
       groupMembersError: null,
       currentArtefact: null,
       permissionsSubjectTitle: '',
+      permissionsSubjectUrl: null,
       isCheckingPrincipalAccess: false,
       principalAccessResult: null,
       principalAccessError: null,
@@ -485,14 +496,17 @@ export default class ContentHealthManager extends React.Component<IContentHealth
                 </Tooltip>
               </div>
             </div>
-            <div className={`${styles.row} ${styles.libraryCommands}`}>
-              <div className={styles['col-sm4']}>
+            <div className={`${styles.row} ${styles.libraryCommands} ${styles.libraryActionsRow}`}>
+              <div className={styles.libraryActionsButtons}>
                 <Tooltip content={strings.TooltipOpenLibraryDetails} relationship="label">
                   <Button icon={<Open24Regular />} onClick={() => this.ShowLibraryReport()} disabled={!this.state.selectedLibrary}>{strings.OpenDetails}</Button>
                 </Tooltip>
+                <Tooltip content={strings.TooltipShowSelectedLibraryPermissions} relationship="label">
+                  <Button icon={<KeyMultiple24Regular />} onClick={() => this.ShowPagePermissions()} disabled={!this.state.selectedLibrary}>{strings.PermissionsButtonLabel}</Button>
+                </Tooltip>
               </div>
 
-              <div className={`${styles['col-sm8']} ${styles.checkboxContainer}`}>
+              <div className={styles.checkboxContainer}>
                 <Checkbox
                   checked={this.state.chkShowLibaries}
                   disabled={this.state.isFilteringLibraries}
@@ -784,8 +798,8 @@ export default class ContentHealthManager extends React.Component<IContentHealth
               <DialogContent style={{ padding: 12 }}>
                 <div>
                   <div><strong>{strings.TitleLabel}</strong> {this.state.permissionsSubjectTitle}</div>
-                  {this.state.selectedPage && (
-                    <div><strong>{strings.UrlLabel}</strong> <a href={this.state.selectedPage.webUrl} target={'_blank'} rel={'noreferrer'}>{this.state.selectedPage.webUrl}</a></div>
+                  {this.state.permissionsSubjectUrl && (
+                    <div><strong>{strings.UrlLabel}</strong> <a href={this.state.permissionsSubjectUrl} target={'_blank'} rel={'noreferrer'}>{this.state.permissionsSubjectUrl}</a></div>
                   )}
                   {this.state.currentArtefact && (
                     <div style={{ marginTop: 12 }}>
@@ -919,6 +933,7 @@ export default class ContentHealthManager extends React.Component<IContentHealth
       console.warn('No site selected. Please select a site first.');
       return;
     }
+    const isLibraryMode = this.state.selectedTabValue === 'tab2' && !!this.state.selectedLibrary;
     this.setState({
       isPagePermissionsOpen: true,
       isLoadingPagePermissions: true,
@@ -930,14 +945,28 @@ export default class ContentHealthManager extends React.Component<IContentHealth
       groupMemberCache: new Map<string, ResolvedGroupUser[]>(),
       groupMembersError: null,
       currentArtefact: null,
-      permissionsSubjectTitle: this.state.selectedPage ? (this.state.selectedPage.title || this.state.selectedPage.name || '') : strings.PagesLibraryLabel,
+      permissionsSubjectTitle: isLibraryMode
+        ? (this.state.selectedLibrary!.Title || '')
+        : this.state.selectedPage ? (this.state.selectedPage.title || this.state.selectedPage.name || '') : strings.PagesLibraryLabel,
+      permissionsSubjectUrl: isLibraryMode
+        ? this.state.selectedLibrary!.DefaultView.ServerRelativeUrl
+        : (this.state.selectedPage?.webUrl || null),
       isCheckingPrincipalAccess: false,
       principalAccessResult: null,
       principalAccessError: null
     });
     try {
       let artefact: SharePointArtefact;
-      if (this.state.selectedPage) {
+      if (isLibraryMode) {
+        artefact = {
+          // ListInformation.ParentWebUrl is not a usable web URL (GraphDataManager appends the list's
+          // EntityTypeName onto it for a different purpose) - libraryEntries is always fetched for the
+          // currently selected site, so that site's own URL is the correct owning web.
+          type: SharePointArtefactType.List,
+          webUrl: site.url,
+          listId: this.state.selectedLibrary!.Id
+        };
+      } else if (this.state.selectedPage) {
         if (!this.state.selectedPage.webUrl) {
           throw new Error('The selected page has no URL.');
         }

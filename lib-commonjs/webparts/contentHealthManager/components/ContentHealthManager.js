@@ -13,6 +13,7 @@ var GraphDataManager_1 = tslib_1.__importDefault(require("../../../services/Grap
 var PageProcessing_1 = require("../../../Core/PageProcessing");
 var react_icons_1 = require("@fluentui/react-icons");
 var PermissionsManager_1 = tslib_1.__importDefault(require("../../../services/PermissionsManager"));
+var Permissions_1 = require("../../../models/REST/Permissions");
 var spfx_controls_react_1 = require("@pnp/spfx-controls-react");
 var ListTemplateTypes_1 = require("../../../Core/ListTemplateTypes");
 var strings = tslib_1.__importStar(require("ContentHealthManagerWebPartStrings"));
@@ -133,11 +134,11 @@ var ContentHealthManager = /** @class */ (function (_super) {
             { name: 'Description', displayName: 'Description', sorting: true, isResizable: true, minWidth: 100 }
         ];
         _this.viewFieldsPage = [
-            { name: 'title', displayName: 'Title', sorting: true, isResizable: true, minWidth: 120 },
+            { name: 'title', displayName: 'Title', sorting: true, isResizable: true, minWidth: 100 },
             { name: 'name', displayName: 'Name', sorting: true, isResizable: true, minWidth: 100 },
-            { name: 'webUrl', displayName: 'URL', sorting: false, isResizable: true, minWidth: 200 },
+            { name: 'webUrl', displayName: 'URL', sorting: false, isResizable: true, minWidth: 100 },
             {
-                name: 'Links', displayName: 'Links', sorting: false, isResizable: true, minWidth: 200,
+                name: 'Links', displayName: 'Links', sorting: false, isResizable: true,
                 render: function (item, index, column) {
                     var entry = _this.state.pageResults.filter(function (x) { return x.pageID === item.id; })[0];
                     if (typeof entry === "undefined" || typeof entry.Links === "undefined") {
@@ -293,6 +294,7 @@ var ContentHealthManager = /** @class */ (function (_super) {
             groupMembersError: null,
             currentArtefact: null,
             permissionsSubjectTitle: '',
+            permissionsSubjectUrl: null,
             isCheckingPrincipalAccess: false,
             principalAccessResult: null,
             principalAccessError: null,
@@ -318,15 +320,9 @@ var ContentHealthManager = /** @class */ (function (_super) {
                     if (!status) {
                         return React.createElement(React.Fragment, null);
                     }
-                    return status.needsApproval
-                        ? React.createElement(React.Fragment, null,
-                            React.createElement(react_icons_1.WarningColor, null),
-                            "\u00A0",
-                            React.createElement("span", null, strings.Yes))
-                        : React.createElement(React.Fragment, null,
-                            React.createElement(react_icons_1.CheckmarkCircleColor, null),
-                            "\u00A0",
-                            React.createElement("span", null, strings.No));
+                    return (React.createElement("span", { style: { display: 'flex', alignItems: 'center', gap: 4 } },
+                        status.needsApproval ? React.createElement(react_icons_1.WarningColor, null) : React.createElement(react_icons_1.CheckmarkCircleColor, null),
+                        React.createElement("span", null, status.needsApproval ? strings.Yes : strings.No)));
                 }
             },
             {
@@ -336,12 +332,9 @@ var ContentHealthManager = /** @class */ (function (_super) {
                     if (!status) {
                         return React.createElement(React.Fragment, null);
                     }
-                    return status.hasUniquePermission
-                        ? React.createElement(React.Fragment, null,
-                            React.createElement(react_icons_1.LockClosed24Regular, null),
-                            "\u00A0",
-                            React.createElement("span", null, strings.Yes))
-                        : React.createElement("span", null, strings.No);
+                    return (React.createElement("span", { style: { display: 'flex', alignItems: 'center', gap: 4 } },
+                        status.hasUniquePermission ? React.createElement(react_icons_1.LockClosed24Regular, null) : React.createElement(react_icons_1.LockOpen24Regular, null),
+                        React.createElement("span", null, status.hasUniquePermission ? strings.Yes : strings.No)));
                 }
             },
             {
@@ -351,12 +344,9 @@ var ContentHealthManager = /** @class */ (function (_super) {
                     if (!status) {
                         return React.createElement(React.Fragment, null);
                     }
-                    return status.checkedOutBy
-                        ? React.createElement(React.Fragment, null,
-                            React.createElement(react_icons_1.Person16Regular, null),
-                            "\u00A0",
-                            React.createElement("span", null, status.checkedOutBy))
-                        : React.createElement("span", null, strings.NotCheckedOut);
+                    return (React.createElement("span", { style: { display: 'flex', alignItems: 'center', gap: 4 } },
+                        status.checkedOutBy ? React.createElement(react_icons_1.Person16Regular, null) : React.createElement(react_icons_1.CheckmarkCircleColor, null),
+                        React.createElement("span", null, status.checkedOutBy || strings.NotCheckedOut)));
                 }
             }
         ], false);
@@ -458,11 +448,13 @@ var ContentHealthManager = /** @class */ (function (_super) {
                         "\u00A0",
                         React.createElement(react_components_1.Tooltip, { content: strings.TooltipCheckedOutItems, relationship: "label" },
                             React.createElement(react_components_1.Button, { icon: React.createElement(react_icons_1.LockClosed24Regular, null), onClick: function () { return _this.StartQueryCheckedOutItems(); } }, strings.CheckedOutItems)))),
-                React.createElement("div", { className: "".concat(ContentHealthManager_module_scss_1.default.row, " ").concat(ContentHealthManager_module_scss_1.default.libraryCommands) },
-                    React.createElement("div", { className: ContentHealthManager_module_scss_1.default['col-sm4'] },
+                React.createElement("div", { className: "".concat(ContentHealthManager_module_scss_1.default.row, " ").concat(ContentHealthManager_module_scss_1.default.libraryCommands, " ").concat(ContentHealthManager_module_scss_1.default.libraryActionsRow) },
+                    React.createElement("div", { className: ContentHealthManager_module_scss_1.default.libraryActionsButtons },
                         React.createElement(react_components_1.Tooltip, { content: strings.TooltipOpenLibraryDetails, relationship: "label" },
-                            React.createElement(react_components_1.Button, { icon: React.createElement(react_icons_1.Open24Regular, null), onClick: function () { return _this.ShowLibraryReport(); }, disabled: !this.state.selectedLibrary }, strings.OpenDetails))),
-                    React.createElement("div", { className: "".concat(ContentHealthManager_module_scss_1.default['col-sm8'], " ").concat(ContentHealthManager_module_scss_1.default.checkboxContainer) },
+                            React.createElement(react_components_1.Button, { icon: React.createElement(react_icons_1.Open24Regular, null), onClick: function () { return _this.ShowLibraryReport(); }, disabled: !this.state.selectedLibrary }, strings.OpenDetails)),
+                        React.createElement(react_components_1.Tooltip, { content: strings.TooltipShowSelectedLibraryPermissions, relationship: "label" },
+                            React.createElement(react_components_1.Button, { icon: React.createElement(react_icons_1.KeyMultiple24Regular, null), onClick: function () { return _this.ShowPagePermissions(); }, disabled: !this.state.selectedLibrary }, strings.PermissionsButtonLabel))),
+                    React.createElement("div", { className: ContentHealthManager_module_scss_1.default.checkboxContainer },
                         React.createElement(react_1.Checkbox, { checked: this.state.chkShowLibaries, disabled: this.state.isFilteringLibraries, onChange: function (ev, checked) {
                                 void _this.UpdateLibraryFilter(checked || false, _this.state.chkShowLists);
                             }, label: strings.LibrariesCheckbox }),
@@ -672,10 +664,10 @@ var ContentHealthManager = /** @class */ (function (_super) {
                                     React.createElement("strong", null, strings.TitleLabel),
                                     " ",
                                     this.state.permissionsSubjectTitle),
-                                this.state.selectedPage && (React.createElement("div", null,
+                                this.state.permissionsSubjectUrl && (React.createElement("div", null,
                                     React.createElement("strong", null, strings.UrlLabel),
                                     " ",
-                                    React.createElement("a", { href: this.state.selectedPage.webUrl, target: '_blank', rel: 'noreferrer' }, this.state.selectedPage.webUrl))),
+                                    React.createElement("a", { href: this.state.permissionsSubjectUrl, target: '_blank', rel: 'noreferrer' }, this.state.permissionsSubjectUrl))),
                                 this.state.currentArtefact && (React.createElement("div", { style: { marginTop: 12 } },
                                     React.createElement(PeoplePicker_1.PeoplePicker, { context: {
                                             absoluteUrl: this.state.currentArtefact.webUrl,
@@ -738,16 +730,18 @@ var ContentHealthManager = /** @class */ (function (_super) {
     };
     ContentHealthManager.prototype.ShowPagePermissions = function () {
         return tslib_1.__awaiter(this, void 0, void 0, function () {
-            var site, artefact_1, permissions, groupTree, error_1;
+            var site, isLibraryMode, artefact_1, permissions, groupTree, error_1;
             var _this = this;
-            return tslib_1.__generator(this, function (_a) {
-                switch (_a.label) {
+            var _a;
+            return tslib_1.__generator(this, function (_b) {
+                switch (_b.label) {
                     case 0:
                         site = this.GetSelectedSite();
                         if (!site) {
                             console.warn('No site selected. Please select a site first.');
                             return [2 /*return*/];
                         }
+                        isLibraryMode = this.state.selectedTabValue === 'tab2' && !!this.state.selectedLibrary;
                         this.setState({
                             isPagePermissionsOpen: true,
                             isLoadingPagePermissions: true,
@@ -759,41 +753,57 @@ var ContentHealthManager = /** @class */ (function (_super) {
                             groupMemberCache: new Map(),
                             groupMembersError: null,
                             currentArtefact: null,
-                            permissionsSubjectTitle: this.state.selectedPage ? (this.state.selectedPage.title || this.state.selectedPage.name || '') : strings.PagesLibraryLabel,
+                            permissionsSubjectTitle: isLibraryMode
+                                ? (this.state.selectedLibrary.Title || '')
+                                : this.state.selectedPage ? (this.state.selectedPage.title || this.state.selectedPage.name || '') : strings.PagesLibraryLabel,
+                            permissionsSubjectUrl: isLibraryMode
+                                ? this.state.selectedLibrary.DefaultView.ServerRelativeUrl
+                                : (((_a = this.state.selectedPage) === null || _a === void 0 ? void 0 : _a.webUrl) || null),
                             isCheckingPrincipalAccess: false,
                             principalAccessResult: null,
                             principalAccessError: null
                         });
-                        _a.label = 1;
+                        _b.label = 1;
                     case 1:
-                        _a.trys.push([1, 7, 8, 9]);
-                        if (!this.state.selectedPage) return [3 /*break*/, 3];
+                        _b.trys.push([1, 8, 9, 10]);
+                        if (!isLibraryMode) return [3 /*break*/, 2];
+                        artefact_1 = {
+                            // ListInformation.ParentWebUrl is not a usable web URL (GraphDataManager appends the list's
+                            // EntityTypeName onto it for a different purpose) - libraryEntries is always fetched for the
+                            // currently selected site, so that site's own URL is the correct owning web.
+                            type: Permissions_1.SharePointArtefactType.List,
+                            webUrl: site.url,
+                            listId: this.state.selectedLibrary.Id
+                        };
+                        return [3 /*break*/, 6];
+                    case 2:
+                        if (!this.state.selectedPage) return [3 /*break*/, 4];
                         if (!this.state.selectedPage.webUrl) {
                             throw new Error('The selected page has no URL.');
                         }
                         return [4 /*yield*/, this.permissionsManager.resolveArtefactFromFileUrl(site.url, this.state.selectedPage.webUrl)];
-                    case 2:
-                        artefact_1 = _a.sent();
-                        return [3 /*break*/, 5];
-                    case 3: return [4 /*yield*/, this.permissionsManager.resolvePagesLibraryArtefact(site.url)];
-                    case 4:
-                        artefact_1 = _a.sent();
-                        _a.label = 5;
-                    case 5: return [4 /*yield*/, this.permissionsManager.get4ArtefactPermissions(artefact_1)];
-                    case 6:
-                        permissions = _a.sent();
+                    case 3:
+                        artefact_1 = _b.sent();
+                        return [3 /*break*/, 6];
+                    case 4: return [4 /*yield*/, this.permissionsManager.resolvePagesLibraryArtefact(site.url)];
+                    case 5:
+                        artefact_1 = _b.sent();
+                        _b.label = 6;
+                    case 6: return [4 /*yield*/, this.permissionsManager.get4ArtefactPermissions(artefact_1)];
+                    case 7:
+                        permissions = _b.sent();
                         groupTree = permissions.filter(function (p) { return p.isGroup; }).map(function (p) { return _this.buildGroupNode(p, artefact_1.webUrl); });
                         this.setState({ pagePermissions: permissions, permissionGroupTree: groupTree, currentArtefact: artefact_1 });
-                        return [3 /*break*/, 9];
-                    case 7:
-                        error_1 = _a.sent();
+                        return [3 /*break*/, 10];
+                    case 8:
+                        error_1 = _b.sent();
                         console.error('Error retrieving page permissions:', error_1);
                         this.setState({ pagePermissionsError: error_1 instanceof Error ? error_1.message : String(error_1) });
-                        return [3 /*break*/, 9];
-                    case 8:
+                        return [3 /*break*/, 10];
+                    case 9:
                         this.setState({ isLoadingPagePermissions: false });
                         return [7 /*endfinally*/];
-                    case 9: return [2 /*return*/];
+                    case 10: return [2 /*return*/];
                 }
             });
         });
