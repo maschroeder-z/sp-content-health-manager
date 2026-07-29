@@ -64,7 +64,8 @@ var ContentHealthManager = /** @class */ (function (_super) {
                     return React.createElement(spfx_controls_react_1.FieldDateRenderer, { text: date.toLocaleDateString() });
                 }
             },
-            { name: 'ContentTypeId', displayName: 'Content Type', sorting: true, isResizable: true, minWidth: 150,
+            {
+                name: 'ContentTypeId', displayName: 'Content Type', sorting: true, isResizable: true, minWidth: 150,
                 render: function (item, inxdex, column) {
                     if (typeof item.ContentType !== "undefined")
                         return item.ContentType;
@@ -76,7 +77,8 @@ var ContentHealthManager = /** @class */ (function (_super) {
         _this.viewFieldsLibs = [
             { name: 'Title', displayName: 'Title', sorting: true, isResizable: true, minWidth: 120, linkPropertyName: 'DefaultView.ServerRelativeUrl' },
             { name: 'ItemCount', displayName: 'Items', sorting: true, isResizable: true, minWidth: 120 },
-            { name: 'FoundItems', displayName: strings.FoundLabel, sorting: true, isResizable: true, minWidth: 120,
+            {
+                name: 'FoundItems', displayName: strings.FoundLabel, sorting: true, isResizable: true, minWidth: 120,
                 render: function (item, index, column) {
                     var _a;
                     var entry = _this.GetLibraryEntryByIndex(item.Id);
@@ -116,7 +118,8 @@ var ContentHealthManager = /** @class */ (function (_super) {
                 }
             },
             { name: 'ItemCount', displayName: 'Items', sorting: true, isResizable: true, minWidth: 120 },
-            { name: 'FoundItems', displayName: strings.FoundLabel, sorting: true, isResizable: true, minWidth: 120,
+            {
+                name: 'FoundItems', displayName: strings.FoundLabel, sorting: true, isResizable: true, minWidth: 120,
                 render: function (item, index, column) {
                     var _a;
                     var entry = _this.GetLibraryEntryByIndex(item.Id);
@@ -133,7 +136,8 @@ var ContentHealthManager = /** @class */ (function (_super) {
             { name: 'title', displayName: 'Title', sorting: true, isResizable: true, minWidth: 120 },
             { name: 'name', displayName: 'Name', sorting: true, isResizable: true, minWidth: 100 },
             { name: 'webUrl', displayName: 'URL', sorting: false, isResizable: true, minWidth: 200 },
-            { name: 'Links', displayName: 'Links', sorting: false, isResizable: true, minWidth: 200,
+            {
+                name: 'Links', displayName: 'Links', sorting: false, isResizable: true, minWidth: 200,
                 render: function (item, index, column) {
                     var entry = _this.state.pageResults.filter(function (x) { return x.pageID === item.id; })[0];
                     if (typeof entry === "undefined" || typeof entry.Links === "undefined") {
@@ -155,20 +159,28 @@ var ContentHealthManager = /** @class */ (function (_super) {
         ];
         _this.viewFieldsPermissions = [
             { name: 'displayName', displayName: strings.PrincipalNameLabel, sorting: true, isResizable: true, minWidth: 180 },
-            { name: 'isGroup', displayName: strings.PrincipalTypeLabel, sorting: true, isResizable: true, minWidth: 100,
+            {
+                name: 'isGroup', displayName: strings.PrincipalTypeLabel, sorting: true, isResizable: true, minWidth: 100,
                 render: function (item) { return (React.createElement("span", { style: { display: 'flex', alignItems: 'center', gap: 4 } },
                     item.isGroup ? React.createElement(react_icons_1.PeopleTeam16Regular, null) : React.createElement(react_icons_1.Person16Regular, null),
                     React.createElement("span", null, item.isGroup ? strings.GroupLabel : strings.UserLabel))); }
             },
-            { name: 'loginName', displayName: strings.LoginNameLabel, sorting: false, isResizable: true, minWidth: 220 },
-            { name: 'roles', displayName: strings.RolesLabel, sorting: false, isResizable: true, minWidth: 200,
+            {
+                name: 'loginName', displayName: strings.LoginNameLabel, sorting: false, isResizable: true, minWidth: 220,
+                render: function (item) { return React.createElement("span", { title: item.loginName }, _this.formatLoginName(item.loginName)); }
+            },
+            {
+                name: 'roles', displayName: strings.RolesLabel, sorting: false, isResizable: true, minWidth: 200,
                 render: function (item) { return React.createElement(spfx_controls_react_1.FieldTextRenderer, { text: (item.roles || []).join(', ') }); }
             }
         ];
         _this.viewFieldsGroupMembers = [
             { name: 'displayName', displayName: strings.PrincipalNameLabel, sorting: true, isResizable: true, minWidth: 180 },
             { name: 'email', displayName: strings.EmailLabel, sorting: true, isResizable: true, minWidth: 220 },
-            { name: 'loginName', displayName: strings.LoginNameLabel, sorting: false, isResizable: true, minWidth: 220 }
+            {
+                name: 'loginName', displayName: strings.LoginNameLabel, sorting: false, isResizable: true, minWidth: 220,
+                render: function (item) { return React.createElement("span", { title: item.loginName }, _this.formatLoginName(item.loginName)); }
+            }
         ];
         _this.handleTreeOpenChange = function (_event, data) {
             var openKeys = data.openItems;
@@ -283,12 +295,82 @@ var ContentHealthManager = /** @class */ (function (_super) {
             permissionsSubjectTitle: '',
             isCheckingPrincipalAccess: false,
             principalAccessResult: null,
-            principalAccessError: null
+            principalAccessError: null,
+            pageDetailsCache: new Map(),
+            isLoadingPageDetails: false,
+            pageDetailsLoaded: false,
+            pageDetailsError: null
         };
         _this.dataManager = new GraphDataManager_1.default(_this.props.msGraphClientFactory, _this.props.spHTTPClient);
         _this.permissionsManager = new PermissionsManager_1.default(_this.props.msGraphClientFactory, _this.props.spHTTPClient);
         return _this;
     }
+    ContentHealthManager.prototype.getPageViewFields = function () {
+        var _this = this;
+        if (!this.state.pageDetailsLoaded) {
+            return this.viewFieldsPage;
+        }
+        return tslib_1.__spreadArray(tslib_1.__spreadArray([], this.viewFieldsPage, true), [
+            {
+                name: 'needsApproval', displayName: strings.NeedsApprovalLabel, sorting: false, isResizable: true, minWidth: 140,
+                render: function (item) {
+                    var status = _this.state.pageDetailsCache.get(item.id);
+                    if (!status) {
+                        return React.createElement(React.Fragment, null);
+                    }
+                    return status.needsApproval
+                        ? React.createElement(React.Fragment, null,
+                            React.createElement(react_icons_1.WarningColor, null),
+                            "\u00A0",
+                            React.createElement("span", null, strings.Yes))
+                        : React.createElement(React.Fragment, null,
+                            React.createElement(react_icons_1.CheckmarkCircleColor, null),
+                            "\u00A0",
+                            React.createElement("span", null, strings.No));
+                }
+            },
+            {
+                name: 'hasUniquePermission', displayName: strings.HasUniquePermissionLabel, sorting: false, isResizable: true, minWidth: 160,
+                render: function (item) {
+                    var status = _this.state.pageDetailsCache.get(item.id);
+                    if (!status) {
+                        return React.createElement(React.Fragment, null);
+                    }
+                    return status.hasUniquePermission
+                        ? React.createElement(React.Fragment, null,
+                            React.createElement(react_icons_1.LockClosed24Regular, null),
+                            "\u00A0",
+                            React.createElement("span", null, strings.Yes))
+                        : React.createElement("span", null, strings.No);
+                }
+            },
+            {
+                name: 'checkedOutBy', displayName: strings.CheckedOutLabel, sorting: false, isResizable: true, minWidth: 160,
+                render: function (item) {
+                    var status = _this.state.pageDetailsCache.get(item.id);
+                    if (!status) {
+                        return React.createElement(React.Fragment, null);
+                    }
+                    return status.checkedOutBy
+                        ? React.createElement(React.Fragment, null,
+                            React.createElement(react_icons_1.Person16Regular, null),
+                            "\u00A0",
+                            React.createElement("span", null, status.checkedOutBy))
+                        : React.createElement("span", null, strings.NotCheckedOut);
+                }
+            }
+        ], false);
+    };
+    // Claims-encoded login names look like "i:0#.f|membership|user@tenant.com" or
+    // "c:0t.c|tenant|<aadGroupId>" - strip the claims provider prefix and keep the
+    // human-meaningful part (email/UPN or the trailing id) for display.
+    ContentHealthManager.prototype.formatLoginName = function (loginName) {
+        if (!loginName) {
+            return '';
+        }
+        var lastSegment = loginName.split('|').pop();
+        return lastSegment || loginName;
+    };
     ContentHealthManager.prototype.GetLibraryEntryByIndex = function (index) {
         return this.state.libraryEntries.filter(function (x) { return x.Id === index; })[0];
     };
@@ -402,8 +484,13 @@ var ContentHealthManager = /** @class */ (function (_super) {
                             React.createElement(react_components_1.Button, { icon: React.createElement(react_icons_1.Open24Regular, null), onClick: function () { return _this.ShowPageReport(); }, disabled: !this.state.selectedPage }, strings.OpenDetails)),
                         "\u00A0",
                         React.createElement(react_components_1.Tooltip, { content: this.state.selectedPage ? strings.TooltipShowPermissions : strings.TooltipShowLibraryPermissions, relationship: "label" },
-                            React.createElement(react_components_1.Button, { icon: React.createElement(react_icons_1.KeyMultiple24Regular, null), onClick: function () { return _this.ShowPagePermissions(); } }, strings.PermissionsButtonLabel)))),
-                React.createElement(ListView_1.ListView, { items: this.state.pageEntries, viewFields: this.viewFieldsPage, compact: true, selectionMode: react_1.SelectionMode.single, selection: this.onListSelectionChanged }))),
+                            React.createElement(react_components_1.Button, { icon: React.createElement(react_icons_1.KeyMultiple24Regular, null), onClick: function () { return _this.ShowPagePermissions(); } }, strings.PermissionsButtonLabel)),
+                        "\u00A0",
+                        React.createElement(react_components_1.Tooltip, { content: strings.TooltipLoadPageDetails, relationship: "label" },
+                            React.createElement(react_components_1.Button, { icon: React.createElement(react_icons_1.Info24Regular, null), onClick: function () { return _this.LoadPageDetails(); }, disabled: this.state.isLoadingPageDetails || this.state.pageDetailsLoaded || this.state.pageEntries.length === 0 }, strings.LoadPageDetailsButtonLabel)),
+                        this.state.isLoadingPageDetails && React.createElement(react_components_1.Spinner, { size: "tiny", className: ContentHealthManager_module_scss_1.default.progressSpinner }),
+                        this.state.pageDetailsError && (React.createElement("div", { style: { color: '#d32f2f' } }, this.state.pageDetailsError)))),
+                React.createElement(ListView_1.ListView, { items: this.state.pageEntries, viewFields: this.getPageViewFields(), compact: true, selectionMode: react_1.SelectionMode.single, selection: this.onListSelectionChanged }))),
             React.createElement(react_components_1.Dialog, { open: !!this.state.isReportOpen, onOpenChange: function (_, data) { return _this.setState({ isReportOpen: !!data.open }); }, modalType: 'alert' },
                 React.createElement(react_components_1.DialogSurface, null,
                     React.createElement(react_components_1.DialogBody, null,
@@ -594,7 +681,7 @@ var ContentHealthManager = /** @class */ (function (_super) {
                                             absoluteUrl: this.state.currentArtefact.webUrl,
                                             msGraphClientFactory: this.props.msGraphClientFactory,
                                             spHttpClient: this.props.spHTTPClient
-                                        }, personSelectionLimit: 1, principalTypes: [PeoplePicker_1.PrincipalType.User, PeoplePicker_1.PrincipalType.SecurityGroup, PeoplePicker_1.PrincipalType.SharePointGroup, PeoplePicker_1.PrincipalType.DistributionList], placeholder: strings.SearchUserOrGroupPlaceholder, onChange: function (items) {
+                                        }, showtooltip: true, personSelectionLimit: 1, principalTypes: [PeoplePicker_1.PrincipalType.User, PeoplePicker_1.PrincipalType.SecurityGroup, PeoplePicker_1.PrincipalType.SharePointGroup, PeoplePicker_1.PrincipalType.DistributionList], useSubstrateSearch: false, searchTextLimit: 2, placeholder: strings.SearchUserOrGroupPlaceholder, onChange: function (items) {
                                             var item = items && items[0] ? items[0] : undefined;
                                             if (item) {
                                                 void _this.checkPrincipalAccess(item);
@@ -742,6 +829,49 @@ var ContentHealthManager = /** @class */ (function (_super) {
             });
         });
     };
+    ContentHealthManager.prototype.LoadPageDetails = function () {
+        return tslib_1.__awaiter(this, void 0, void 0, function () {
+            var site, entries, error_3;
+            var _this = this;
+            return tslib_1.__generator(this, function (_a) {
+                switch (_a.label) {
+                    case 0:
+                        site = this.GetSelectedSite();
+                        if (!site) {
+                            return [2 /*return*/];
+                        }
+                        this.setState({ isLoadingPageDetails: true, pageDetailsError: null });
+                        _a.label = 1;
+                    case 1:
+                        _a.trys.push([1, 3, 4, 5]);
+                        return [4 /*yield*/, Promise.all(this.state.pageEntries.map(function (page) { return tslib_1.__awaiter(_this, void 0, void 0, function () {
+                                var status;
+                                return tslib_1.__generator(this, function (_a) {
+                                    switch (_a.label) {
+                                        case 0: return [4 /*yield*/, this.permissionsManager.getPageStatus(site.url, page.webUrl)];
+                                        case 1:
+                                            status = _a.sent();
+                                            return [2 /*return*/, [page.id, status]];
+                                    }
+                                });
+                            }); }))];
+                    case 2:
+                        entries = _a.sent();
+                        this.setState({ pageDetailsCache: new Map(entries), pageDetailsLoaded: true });
+                        return [3 /*break*/, 5];
+                    case 3:
+                        error_3 = _a.sent();
+                        console.error('Error loading page details:', error_3);
+                        this.setState({ pageDetailsError: error_3 instanceof Error ? error_3.message : String(error_3) });
+                        return [3 /*break*/, 5];
+                    case 4:
+                        this.setState({ isLoadingPageDetails: false });
+                        return [7 /*endfinally*/];
+                    case 5: return [2 /*return*/];
+                }
+            });
+        });
+    };
     ContentHealthManager.prototype.getPermissionLevelLabel = function (info) {
         if (info.hasFullControl || info.canManagePermissions) {
             return strings.FullControlLabel;
@@ -802,7 +932,7 @@ var ContentHealthManager = /** @class */ (function (_super) {
     };
     ContentHealthManager.prototype.loadNestedGroups = function (node) {
         return tslib_1.__awaiter(this, void 0, void 0, function () {
-            var nestedGroups, children, error_3, message;
+            var nestedGroups, children, error_4, message;
             var _this = this;
             return tslib_1.__generator(this, function (_a) {
                 switch (_a.label) {
@@ -818,9 +948,9 @@ var ContentHealthManager = /** @class */ (function (_super) {
                         this.setState({ permissionGroupTree: this.updateTreeNode(this.state.permissionGroupTree, node.key, { children: children, isLoadingChildren: false }) });
                         return [3 /*break*/, 4];
                     case 3:
-                        error_3 = _a.sent();
-                        console.error('Error resolving nested groups:', error_3);
-                        message = error_3 instanceof Error ? error_3.message : String(error_3);
+                        error_4 = _a.sent();
+                        console.error('Error resolving nested groups:', error_4);
+                        message = error_4 instanceof Error ? error_4.message : String(error_4);
                         this.setState({ permissionGroupTree: this.updateTreeNode(this.state.permissionGroupTree, node.key, { isLoadingChildren: false, loadError: message }) });
                         return [3 /*break*/, 4];
                     case 4: return [2 /*return*/];
@@ -840,7 +970,7 @@ var ContentHealthManager = /** @class */ (function (_super) {
     };
     ContentHealthManager.prototype.loadGroupMembers = function (key, groupInfo) {
         return tslib_1.__awaiter(this, void 0, void 0, function () {
-            var users, cache, error_4;
+            var users, cache, error_5;
             return tslib_1.__generator(this, function (_a) {
                 switch (_a.label) {
                     case 0:
@@ -856,9 +986,9 @@ var ContentHealthManager = /** @class */ (function (_super) {
                         this.setState({ groupMemberCache: cache });
                         return [3 /*break*/, 5];
                     case 3:
-                        error_4 = _a.sent();
-                        console.error('Error resolving group members:', error_4);
-                        this.setState({ groupMembersError: error_4 instanceof Error ? error_4.message : String(error_4) });
+                        error_5 = _a.sent();
+                        console.error('Error resolving group members:', error_5);
+                        this.setState({ groupMembersError: error_5 instanceof Error ? error_5.message : String(error_5) });
                         return [3 /*break*/, 5];
                     case 4:
                         this.setState({ isLoadingGroupMembers: false });
@@ -886,7 +1016,7 @@ var ContentHealthManager = /** @class */ (function (_super) {
     };
     ContentHealthManager.prototype.StartBrokenLinkProcess = function () {
         return tslib_1.__awaiter(this, void 0, void 0, function () {
-            var pageAnalyzer, fullPageContent, resultLinks, _i, _a, pageEntry, fullPageContent, resultLinks, error_5, error_6;
+            var pageAnalyzer, fullPageContent, resultLinks, _i, _a, pageEntry, fullPageContent, resultLinks, error_6, error_7;
             return tslib_1.__generator(this, function (_b) {
                 switch (_b.label) {
                     case 0:
@@ -942,16 +1072,16 @@ var ContentHealthManager = /** @class */ (function (_super) {
                         });
                         return [3 /*break*/, 10];
                     case 9:
-                        error_5 = _b.sent();
-                        console.error("Error processing page ".concat(pageEntry.title || pageEntry.name, ":"), error_5);
+                        error_6 = _b.sent();
+                        console.error("Error processing page ".concat(pageEntry.title || pageEntry.name, ":"), error_6);
                         return [3 /*break*/, 10];
                     case 10:
                         _i++;
                         return [3 /*break*/, 5];
                     case 11: return [3 /*break*/, 14];
                     case 12:
-                        error_6 = _b.sent();
-                        console.error('Error during broken link process:', error_6);
+                        error_7 = _b.sent();
+                        console.error('Error during broken link process:', error_7);
                         return [3 /*break*/, 14];
                     case 13:
                         this.setState({ isProcessingBrokenLinks: false });
@@ -1043,7 +1173,7 @@ var ContentHealthManager = /** @class */ (function (_super) {
     };
     ContentHealthManager.prototype.GetPermission4SelectedItem = function (site, listID, listItemID) {
         return tslib_1.__awaiter(this, void 0, void 0, function () {
-            var permissions, error_7;
+            var permissions, error_8;
             return tslib_1.__generator(this, function (_a) {
                 switch (_a.label) {
                     case 0:
@@ -1054,8 +1184,8 @@ var ContentHealthManager = /** @class */ (function (_super) {
                         console.log('Item permissions:', permissions);
                         return [3 /*break*/, 3];
                     case 2:
-                        error_7 = _a.sent();
-                        console.error('Error retrieving item permissions:', error_7);
+                        error_8 = _a.sent();
+                        console.error('Error retrieving item permissions:', error_8);
                         return [3 /*break*/, 3];
                     case 3: return [2 /*return*/];
                 }

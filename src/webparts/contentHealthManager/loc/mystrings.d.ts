@@ -57,6 +57,7 @@ declare interface IContentHealthManagerWebPartStrings {
   TooltipShowPermissions: string;
   TooltipCloseDialog: string;
   TooltipToggleContent: string;
+  TooltipLoadPageDetails: string;
   // Page Report Dialog
   PageReportTitle: string;
   TitleLabel: string;
@@ -124,6 +125,12 @@ declare interface IContentHealthManagerWebPartStrings {
   LastDeletionLabel: string;
   FoundLinksCount: string;
   BrokenLinksCount: string;
+  // Page Details (on-demand columns)
+  LoadPageDetailsButtonLabel: string;
+  NeedsApprovalLabel: string;
+  HasUniquePermissionLabel: string;
+  CheckedOutLabel: string;
+  NotCheckedOut: string;
 }
 
 declare module 'ContentHealthManagerWebPartStrings' {

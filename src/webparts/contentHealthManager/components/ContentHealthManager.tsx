@@ -17,8 +17,8 @@ import type { LinkInfo } from '../../../models/LinkInfo';
 import { CheckmarkCircleColor, CheckmarkCircleHintRegular, FlagPrideIntersexInclusiveProgressFilled, QuestionCircleColor, WarningColor, Search24Regular, DataTrending24Regular, List24Regular, Link24Regular, Clock24Regular, LockClosed24Regular, ChevronDown24Regular, ChevronUp24Regular, DatabaseSearch24Regular, Open24Regular, Dismiss24Regular, KeyMultiple24Regular, Info24Regular, PeopleTeam16Regular, Person16Regular } from "@fluentui/react-icons";
 import { ListInformation } from '../../../models/REST/ListInformation';
 import PermissionsManager from '../../../services/PermissionsManager';
-import { ResolvedGroupUser, SharePointArtefact, SharePointGroupInfo, SharePointPermissionInfo, SharePointPrincipalPermission } from '../../../models/REST/Permissions';
-import { FieldDateRenderer,FieldTextRenderer } from '@pnp/spfx-controls-react';
+import { PageStatusInfo, ResolvedGroupUser, SharePointArtefact, SharePointGroupInfo, SharePointPermissionInfo, SharePointPrincipalPermission } from '../../../models/REST/Permissions';
+import { FieldDateRenderer, FieldTextRenderer } from '@pnp/spfx-controls-react';
 import { ListTemplateType } from '../../../Core/ListTemplateTypes';
 import * as strings from 'ContentHealthManagerWebPartStrings';
 //import * as MicrosoftGraphBeta from "@microsoft/microsoft-graph-types-beta"
@@ -36,10 +36,10 @@ interface IContentHealthManagerState {
   pageEntries: Page[];
   SelectedSites: Site[];
   selectedSiteId: string | null;
-  pageResults: PageResult[];  
+  pageResults: PageResult[];
   isReportOpen?: boolean;
   selectedPage?: Page | null;
-  dateStartDate: Date |  undefined | null;
+  dateStartDate: Date | undefined | null;
   isLibraryReportOpen?: boolean;
   selectedLibrary?: ListInformation | null;
   selectedTabValue: TabValue;
@@ -66,156 +66,206 @@ interface IContentHealthManagerState {
   isCheckingPrincipalAccess?: boolean;
   principalAccessResult: { displayName: string; hasAccess: boolean; permissionInfo: SharePointPermissionInfo } | null;
   principalAccessError?: string | null;
+  pageDetailsCache: Map<string, PageStatusInfo>;
+  isLoadingPageDetails?: boolean;
+  pageDetailsLoaded?: boolean;
+  pageDetailsError?: string | null;
 }
 
 export default class ContentHealthManager extends React.Component<IContentHealthManagerProps, IContentHealthManagerState> {
-  tempSelectedSites : Site[] =   [
+  tempSelectedSites: Site[] = [
     {
-        "id": "0a83c49d-6da8-459e-8bb4-98be06a28dcc",
-        "webId": "ca9dc690-1f36-49b3-9283-05547458d435",
-        "title": "Meine Schulung",
-        "url": "https://devsky365.sharepoint.com/sites/Demo03"
+      "id": "0a83c49d-6da8-459e-8bb4-98be06a28dcc",
+      "webId": "ca9dc690-1f36-49b3-9283-05547458d435",
+      "title": "Meine Schulung",
+      "url": "https://devsky365.sharepoint.com/sites/Demo03"
     },
     {
-        "id": "399408ed-462d-4ec4-acfd-69ee87b54649",
-        "webId": "ca9dc690-1f36-49b3-9283-05547458d435",
-        "title": "Make your own LOB :-)",
-        "url": "https://devsky365.sharepoint.com/sites/my-own-lob-apps"
+      "id": "399408ed-462d-4ec4-acfd-69ee87b54649",
+      "webId": "ca9dc690-1f36-49b3-9283-05547458d435",
+      "title": "Make your own LOB :-)",
+      "url": "https://devsky365.sharepoint.com/sites/my-own-lob-apps"
     },
     {
-        "id": "15908e6d-d68a-4154-a9b7-a8557f5ace69",
-        "webId": "ea4629cd-d579-48e8-9c74-9505c13fd042",
-        "title": "HeimHaus",
-        "url": "https://devsky365.sharepoint.com/sites/HeimHaus"
+      "id": "15908e6d-d68a-4154-a9b7-a8557f5ace69",
+      "webId": "ea4629cd-d579-48e8-9c74-9505c13fd042",
+      "title": "HeimHaus",
+      "url": "https://devsky365.sharepoint.com/sites/HeimHaus"
     },
     {
-        "id": "d6f6d04c-5c5b-468c-82d7-39d08e86dfa5",
-        "webId": "eb707bcc-5ead-49c5-81bc-3109c317f837",
-        "title": "Hausfeen",
-        "url": "https://devsky365.sharepoint.com/sites/Hausfeen"
+      "id": "d6f6d04c-5c5b-468c-82d7-39d08e86dfa5",
+      "webId": "eb707bcc-5ead-49c5-81bc-3109c317f837",
+      "title": "Hausfeen",
+      "url": "https://devsky365.sharepoint.com/sites/Hausfeen"
     }
-]
+  ]
   dataManager: GraphDataManager;
   permissionsManager: PermissionsManager;
   // View fields for found items in library report dialog
   viewFieldsFoundItems: IViewField[] = [
-    { name: 'Id', displayName: 'ID', sorting: true, isResizable: true, minWidth: 80, linkPropertyName:'webUrl' },
+    { name: 'Id', displayName: 'ID', sorting: true, isResizable: true, minWidth: 80, linkPropertyName: 'webUrl' },
     { name: 'Title', displayName: 'Title', sorting: true, isResizable: true, minWidth: 200 },
-    { 
+    {
       name: 'Created', displayName: 'Created', sorting: true, isResizable: true, minWidth: 120,
       render: (item: any, index, column) => {
         const date = new Date(item.Created);
-        return <FieldDateRenderer text={date.toLocaleDateString()} />;    
+        return <FieldDateRenderer text={date.toLocaleDateString()} />;
       }
     },
-    { 
+    {
       name: 'Modified', displayName: 'Modified', sorting: true, isResizable: true, minWidth: 120,
       render: (item: any, index, column) => {
         const date = new Date(item.Modified);
-        return <FieldDateRenderer text={date.toLocaleDateString()} />;    
+        return <FieldDateRenderer text={date.toLocaleDateString()} />;
       }
     },
-    { name: 'ContentTypeId', displayName: 'Content Type', sorting: true, isResizable: true, minWidth: 150,
+    {
+      name: 'ContentTypeId', displayName: 'Content Type', sorting: true, isResizable: true, minWidth: 150,
       render: (item: any, inxdex, column) => {
         if (typeof item.ContentType !== "undefined")
-          return item.ContentType;              
+          return item.ContentType;
         return item["ContentType.Name"];
       }
-     }
+    }
   ];
 
   // BaseTemplate BaseType EnableAttachments EnableFolderCreation EnableVersioning ForceCheckout ItemCount LastItemModifiedDate LastItemUserModifiedDate
   viewFieldsLibs: IViewField[] = [
-    { name: 'Title', displayName: 'Title', sorting: true, isResizable: true, minWidth: 120, linkPropertyName:'DefaultView.ServerRelativeUrl'},
+    { name: 'Title', displayName: 'Title', sorting: true, isResizable: true, minWidth: 120, linkPropertyName: 'DefaultView.ServerRelativeUrl' },
     { name: 'ItemCount', displayName: 'Items', sorting: true, isResizable: true, minWidth: 120 },
-    { name: 'FoundItems', displayName: strings.FoundLabel, sorting: true, isResizable: true, minWidth: 120,
-      render: (item:ListInformation, index, column) => {             
+    {
+      name: 'FoundItems', displayName: strings.FoundLabel, sorting: true, isResizable: true, minWidth: 120,
+      render: (item: ListInformation, index, column) => {
         const entry = this.GetLibraryEntryByIndex(item.Id);
-        if (typeof entry.FoundItems !== "undefined" && entry.FoundItems !== null)
-        {
+        if (typeof entry.FoundItems !== "undefined" && entry.FoundItems !== null) {
           return <FieldTextRenderer text={`${strings.FoundLabel}: ${entry.FoundItems?.length}`} />;
         }
         else
           return <FieldTextRenderer text={strings.StartQueryForResults} />;
       }
-     },    
-    { 
+    },
+    {
       name: 'Created', displayName: strings.CreatedAtLabel, sorting: true, isResizable: true, minWidth: 100,
-      render: (item:ListInformation, index, column) => {
+      render: (item: ListInformation, index, column) => {
         const date = new Date(item.Created);
-        return <FieldDateRenderer text={date.toLocaleDateString()} />;    
+        return <FieldDateRenderer text={date.toLocaleDateString()} />;
       }
     },
-    { 
-      name: 'LastItemModifiedDate', displayName: strings.LastChangeLabel, sorting: true, isResizable: true, minWidth: 120, linkPropertyName:'webUrl',
-      render: (item:ListInformation, index, column) => {
+    {
+      name: 'LastItemModifiedDate', displayName: strings.LastChangeLabel, sorting: true, isResizable: true, minWidth: 120, linkPropertyName: 'webUrl',
+      render: (item: ListInformation, index, column) => {
         const date = new Date(item.LastItemModifiedDate);
-        return <FieldDateRenderer text={date.toLocaleString()} />;  
+        return <FieldDateRenderer text={date.toLocaleString()} />;
       }
     },
-    { 
-      name: 'LastItemUserModifiedDate', displayName: strings.UserChangedLabel, sorting: true, isResizable: true, minWidth: 120, linkPropertyName:'webUrl',
-      render: (item:ListInformation, index, column) => {
+    {
+      name: 'LastItemUserModifiedDate', displayName: strings.UserChangedLabel, sorting: true, isResizable: true, minWidth: 120, linkPropertyName: 'webUrl',
+      render: (item: ListInformation, index, column) => {
         const date = new Date(item.LastItemUserModifiedDate);
         return <FieldDateRenderer text={date.toLocaleString()} />;
       }
     },
-    { 
+    {
       name: 'LastItemDeletedDate', displayName: strings.LastDeletionLabel, sorting: true, isResizable: true, minWidth: 100,
-      render: (item:ListInformation, index, column) => {
+      render: (item: ListInformation, index, column) => {
         const date = new Date(item.LastItemDeletedDate);
         return <FieldDateRenderer text={date.toLocaleString()} />;
       }
     },
     { name: 'ItemCount', displayName: 'Items', sorting: true, isResizable: true, minWidth: 120 },
-    { name: 'FoundItems', displayName: strings.FoundLabel, sorting: true, isResizable: true, minWidth: 120,
-      render: (item:ListInformation, index, column) => {             
+    {
+      name: 'FoundItems', displayName: strings.FoundLabel, sorting: true, isResizable: true, minWidth: 120,
+      render: (item: ListInformation, index, column) => {
         const entry = this.GetLibraryEntryByIndex(item.Id);
-        if (typeof entry.FoundItems !== "undefined" && entry.FoundItems !== null)
-        {
+        if (typeof entry.FoundItems !== "undefined" && entry.FoundItems !== null) {
           return <FieldTextRenderer text={`${strings.FoundLabel}: ${entry.FoundItems?.length}`} />;
         }
         else
           return <FieldTextRenderer text={strings.StartQueryForResults} />;
       }
-     },
+    },
     { name: 'Description', displayName: 'Description', sorting: true, isResizable: true, minWidth: 100 }
   ];
 
   viewFieldsPage: IViewField[] = [
     { name: 'title', displayName: 'Title', sorting: true, isResizable: true, minWidth: 120 },
     { name: 'name', displayName: 'Name', sorting: true, isResizable: true, minWidth: 100 },
-    { name: 'webUrl', displayName: 'URL', sorting: false, isResizable: true, minWidth: 200 },     
-    { name: 'Links', displayName: 'Links', sorting: false, isResizable: true, minWidth: 200,
-      render: (item, index, column) => {                                    
-        const entry = this.state.pageResults.filter(x=>x.pageID === item.id)[0];            
+    { name: 'webUrl', displayName: 'URL', sorting: false, isResizable: true, minWidth: 200 },
+    {
+      name: 'Links', displayName: 'Links', sorting: false, isResizable: true, minWidth: 200,
+      render: (item, index, column) => {
+        const entry = this.state.pageResults.filter(x => x.pageID === item.id)[0];
 
-        if (typeof entry === "undefined" || typeof entry.Links === "undefined")
-        {
-          return <>          
-          <CheckmarkCircleHintRegular />
+        if (typeof entry === "undefined" || typeof entry.Links === "undefined") {
+          return <>
+            <CheckmarkCircleHintRegular />
           </>;
         }
 
-        if (entry.Links.filter(x=>x.IsBroken).length>0)
-        {
+        if (entry.Links.filter(x => x.IsBroken).length > 0) {
           return (<>
             <WarningColor />
-            &nbsp;<span>{strings.FoundLinksCount.replace('{0}', entry.Links.length.toString()).replace('{1}', entry.Links.filter(x=>x.IsBroken).length.toString())}</span>
-            </>);
+            &nbsp;<span>{strings.FoundLinksCount.replace('{0}', entry.Links.length.toString()).replace('{1}', entry.Links.filter(x => x.IsBroken).length.toString())}</span>
+          </>);
         }
-        return <>          
+        return <>
           <CheckmarkCircleColor />
           &nbsp;
-          <span>{strings.FoundLinksCount.replace('{0}', entry.Links.length.toString()).replace('{1}', entry.Links.filter(x=>x.IsBroken).length.toString())}</span>
-          </>; 
+          <span>{strings.FoundLinksCount.replace('{0}', entry.Links.length.toString()).replace('{1}', entry.Links.filter(x => x.IsBroken).length.toString())}</span>
+        </>;
       }
-     }
+    }
   ];
+
+  private getPageViewFields(): IViewField[] {
+    if (!this.state.pageDetailsLoaded) {
+      return this.viewFieldsPage;
+    }
+    return [
+      ...this.viewFieldsPage,
+      {
+        name: 'needsApproval', displayName: strings.NeedsApprovalLabel, sorting: false, isResizable: true, minWidth: 140,
+        render: (item: Page) => {
+          const status = this.state.pageDetailsCache.get(item.id);
+          if (!status) {
+            return <></>;
+          }
+          return status.needsApproval
+            ? <><WarningColor />&nbsp;<span>{strings.Yes}</span></>
+            : <><CheckmarkCircleColor />&nbsp;<span>{strings.No}</span></>;
+        }
+      },
+      {
+        name: 'hasUniquePermission', displayName: strings.HasUniquePermissionLabel, sorting: false, isResizable: true, minWidth: 160,
+        render: (item: Page) => {
+          const status = this.state.pageDetailsCache.get(item.id);
+          if (!status) {
+            return <></>;
+          }
+          return status.hasUniquePermission
+            ? <><LockClosed24Regular />&nbsp;<span>{strings.Yes}</span></>
+            : <span>{strings.No}</span>;
+        }
+      },
+      {
+        name: 'checkedOutBy', displayName: strings.CheckedOutLabel, sorting: false, isResizable: true, minWidth: 160,
+        render: (item: Page) => {
+          const status = this.state.pageDetailsCache.get(item.id);
+          if (!status) {
+            return <></>;
+          }
+          return status.checkedOutBy
+            ? <><Person16Regular />&nbsp;<span>{status.checkedOutBy}</span></>
+            : <span>{strings.NotCheckedOut}</span>;
+        }
+      }
+    ];
+  }
 
   viewFieldsPermissions: IViewField[] = [
     { name: 'displayName', displayName: strings.PrincipalNameLabel, sorting: true, isResizable: true, minWidth: 180 },
-    { name: 'isGroup', displayName: strings.PrincipalTypeLabel, sorting: true, isResizable: true, minWidth: 100,
+    {
+      name: 'isGroup', displayName: strings.PrincipalTypeLabel, sorting: true, isResizable: true, minWidth: 100,
       render: (item: SharePointPrincipalPermission) => (
         <span style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
           {item.isGroup ? <PeopleTeam16Regular /> : <Person16Regular />}
@@ -223,8 +273,12 @@ export default class ContentHealthManager extends React.Component<IContentHealth
         </span>
       )
     },
-    { name: 'loginName', displayName: strings.LoginNameLabel, sorting: false, isResizable: true, minWidth: 220 },
-    { name: 'roles', displayName: strings.RolesLabel, sorting: false, isResizable: true, minWidth: 200,
+    {
+      name: 'loginName', displayName: strings.LoginNameLabel, sorting: false, isResizable: true, minWidth: 220,
+      render: (item: SharePointPrincipalPermission) => <span title={item.loginName}>{this.formatLoginName(item.loginName)}</span>
+    },
+    {
+      name: 'roles', displayName: strings.RolesLabel, sorting: false, isResizable: true, minWidth: 200,
       render: (item: SharePointPrincipalPermission) => <FieldTextRenderer text={(item.roles || []).join(', ')} />
     }
   ];
@@ -232,23 +286,37 @@ export default class ContentHealthManager extends React.Component<IContentHealth
   viewFieldsGroupMembers: IViewField[] = [
     { name: 'displayName', displayName: strings.PrincipalNameLabel, sorting: true, isResizable: true, minWidth: 180 },
     { name: 'email', displayName: strings.EmailLabel, sorting: true, isResizable: true, minWidth: 220 },
-    { name: 'loginName', displayName: strings.LoginNameLabel, sorting: false, isResizable: true, minWidth: 220 }
+    {
+      name: 'loginName', displayName: strings.LoginNameLabel, sorting: false, isResizable: true, minWidth: 220,
+      render: (item: ResolvedGroupUser) => <span title={item.loginName}>{this.formatLoginName(item.loginName)}</span>
+    }
   ];
+
+  // Claims-encoded login names look like "i:0#.f|membership|user@tenant.com" or
+  // "c:0t.c|tenant|<aadGroupId>" - strip the claims provider prefix and keep the
+  // human-meaningful part (email/UPN or the trailing id) for display.
+  private formatLoginName(loginName: string | undefined): string {
+    if (!loginName) {
+      return '';
+    }
+    const lastSegment = loginName.split('|').pop();
+    return lastSegment || loginName;
+  }
 
   constructor(props: IContentHealthManagerProps) {
     super(props);
 
-    this.state = {     
-      dateStartDate: new Date(),   
+    this.state = {
+      dateStartDate: new Date(),
       pageResults: [],
-      SelectedSites: this.tempSelectedSites,   
+      SelectedSites: this.tempSelectedSites,
       libraryEntries: [],
       selectedSiteId: null,
       isReportOpen: false,
       selectedPage: null,
       isLibraryReportOpen: false,
       selectedLibrary: null,
-      selectedTabValue: null,      
+      selectedTabValue: null,
       pageEntries: [],
       chkShowLibaries: true,
       chkShowLists: true,
@@ -272,17 +340,20 @@ export default class ContentHealthManager extends React.Component<IContentHealth
       permissionsSubjectTitle: '',
       isCheckingPrincipalAccess: false,
       principalAccessResult: null,
-      principalAccessError: null
+      principalAccessError: null,
+      pageDetailsCache: new Map<string, PageStatusInfo>(),
+      isLoadingPageDetails: false,
+      pageDetailsLoaded: false,
+      pageDetailsError: null
     };
     this.dataManager = new GraphDataManager(this.props.msGraphClientFactory, this.props.spHTTPClient);
     this.permissionsManager = new PermissionsManager(this.props.msGraphClientFactory, this.props.spHTTPClient);
   }
 
-  private GetLibraryEntryByIndex(index: string):ListInformation
-  {    
-    return this.state.libraryEntries.filter(x=>x.Id === index)[0];
+  private GetLibraryEntryByIndex(index: string): ListInformation {
+    return this.state.libraryEntries.filter(x => x.Id === index)[0];
   }
-/**https://storybooks.fluentui.dev/react/?path=/docs/components-tablist--docs*/
+  /**https://storybooks.fluentui.dev/react/?path=/docs/components-tablist--docs*/
   public render(): React.ReactElement<IContentHealthManagerProps> {
     return (
       <section className={styles.contentHealthManager}>
@@ -298,7 +369,7 @@ export default class ContentHealthManager extends React.Component<IContentHealth
                 </p>
               </div>
             </div>
-            
+
             <div className={styles.instructionsSection}>
               <h4><List24Regular className={styles.inlineIcon} />{strings.HowToUseHeading}</h4>
               <ol className={styles.stepList}>
@@ -323,54 +394,54 @@ export default class ContentHealthManager extends React.Component<IContentHealth
 
         <div className={styles.row}>
           <div className={styles['col-sm12']}>
-            {this.state.SelectedSites.length === 0 && <p className={styles.infoMessage}><QuestionCircleColor />{strings.SelectFirstAllSites}</p>}            
+            {this.state.SelectedSites.length === 0 && <p className={styles.infoMessage}><QuestionCircleColor />{strings.SelectFirstAllSites}</p>}
             <Field label={strings.SelectSitesLabel}>
               <SitePicker
-                context={this.props.wpContext as any}              
-                mode={'site'}         
-                selectedSites={this.tempSelectedSites}       
+                context={this.props.wpContext as any}
+                mode={'site'}
+                selectedSites={this.tempSelectedSites}
                 allowSearch={true}
                 multiSelect={true}
-                className={styles.sitePicker}                
+                className={styles.sitePicker}
                 trimDuplicates={true}
-                onChange={(sites) => {                
+                onChange={(sites) => {
                   console.log(sites);
-                  this.setState({ SelectedSites: sites as Site[] });            
+                  this.setState({ SelectedSites: sites as Site[] });
                 }}
                 placeholder={strings.SelectAllSitesPlaceholder}
                 searchPlaceholder={strings.FilterSitesPlaceholder} />
-              </Field>
+            </Field>
           </div>
-          <div className={styles['col-sm12']}>      
+          <div className={styles['col-sm12']}>
             {this.state.SelectedSites.length > 0 && this.state.selectedSiteId === null && <div>
               <p className={styles.infoMessage}><QuestionCircleColor />{strings.ToContinueSelectSite}</p>
             </div>}
             {this.state.SelectedSites.length > 0 &&
               <Field label={strings.ChooseSiteLabel}>
-                <Dropdown 
-                  id={'ddCurrentSite'} 
-                  inlinePopup={true}                 
+                <Dropdown
+                  id={'ddCurrentSite'}
+                  inlinePopup={true}
                   onOptionSelect={this.onDropdDownSelectionChanged}
                   placeholder={strings.SelectSitePlaceholder}>
-                  {this.state.SelectedSites.map((entry:Site) => (
+                  {this.state.SelectedSites.map((entry: Site) => (
                     <Option value={entry.id} key={entry.webId} >
                       {entry.title}
                     </Option>
                   ))}
-                </Dropdown>     
+                </Dropdown>
               </Field>
-              }
+            }
           </div>
         </div>
 
-        {this.state.selectedSiteId && <>        
-        <p className={styles.infoMessage}><FlagPrideIntersexInclusiveProgressFilled />{strings.ResultsForSite} 
-          <a href={this.GetSelectedSite().url} target={'_blank'} rel={'noreferrer'}><strong>{this.GetSelectedSite().title}</strong></a>
-        </p>
-        <TabList selectedValue={this.state.selectedTabValue} onTabSelect={this.onTabSelect}>
-          <Tab value="tab1">{strings.BrokenLinksAnalysisTab}</Tab>
-          <Tab value="tab2">{strings.LibraryAnalysisTab}</Tab>
-        </TabList> </> }
+        {this.state.selectedSiteId && <>
+          <p className={styles.infoMessage}><FlagPrideIntersexInclusiveProgressFilled />{strings.ResultsForSite}
+            <a href={this.GetSelectedSite().url} target={'_blank'} rel={'noreferrer'}><strong>{this.GetSelectedSite().title}</strong></a>
+          </p>
+          <TabList selectedValue={this.state.selectedTabValue} onTabSelect={this.onTabSelect}>
+            <Tab value="tab1">{strings.BrokenLinksAnalysisTab}</Tab>
+            <Tab value="tab2">{strings.LibraryAnalysisTab}</Tab>
+          </TabList> </>}
 
         {this.state.selectedTabValue === 'tab2' && (
           <div id="Register1" className={styles.row}>
@@ -387,11 +458,11 @@ export default class ContentHealthManager extends React.Component<IContentHealth
                 <Field label={strings.SelectDateLabel} orientation="horizontal">
                   <DatePicker
                     value={this.state.dateStartDate as Date | undefined}
-                    minDate={new Date(2000,0,1)}
+                    minDate={new Date(2000, 0, 1)}
                     maxDate={new Date()}
-                    placeholder={strings.SelectQueryDatePlaceholder} 
-                    onSelectDate={(selectedDate:Date|undefined|null) => this.setState(
-                      {dateStartDate: selectedDate}
+                    placeholder={strings.SelectQueryDatePlaceholder}
+                    onSelectDate={(selectedDate: Date | undefined | null) => this.setState(
+                      { dateStartDate: selectedDate }
                     )}
                   />
                 </Field>
@@ -415,38 +486,38 @@ export default class ContentHealthManager extends React.Component<IContentHealth
               </div>
             </div>
             <div className={`${styles.row} ${styles.libraryCommands}`}>
-                <div className={styles['col-sm4']}>
-                  <Tooltip content={strings.TooltipOpenLibraryDetails} relationship="label">
-                    <Button icon={<Open24Regular />} onClick={() => this.ShowLibraryReport()} disabled={!this.state.selectedLibrary}>{strings.OpenDetails}</Button>
-                  </Tooltip>
-                </div>
-                
-                <div className={`${styles['col-sm8']} ${styles.checkboxContainer}`}>
-                  <Checkbox
-                    checked={this.state.chkShowLibaries}
-                    disabled={this.state.isFilteringLibraries}
-                    onChange={(ev, checked: boolean | undefined) => {
-                        void this.UpdateLibraryFilter(checked || false, this.state.chkShowLists);
-                      }
-                    }
-                    label={strings.LibrariesCheckbox}
-                  />
-                  <Checkbox
-                    checked={this.state.chkShowLists}
-                    disabled={this.state.isFilteringLibraries}
-                    onChange={(ev, checked: boolean | undefined) => {
-                        void this.UpdateLibraryFilter(this.state.chkShowLibaries, checked || false);
-                      }
-                    }
-                    label={strings.ListsCheckbox}
-                  />
-                  {this.state.isFilteringLibraries && <Spinner size="tiny" className={styles.progressSpinner} />}
-                </div>
+              <div className={styles['col-sm4']}>
+                <Tooltip content={strings.TooltipOpenLibraryDetails} relationship="label">
+                  <Button icon={<Open24Regular />} onClick={() => this.ShowLibraryReport()} disabled={!this.state.selectedLibrary}>{strings.OpenDetails}</Button>
+                </Tooltip>
+              </div>
+
+              <div className={`${styles['col-sm8']} ${styles.checkboxContainer}`}>
+                <Checkbox
+                  checked={this.state.chkShowLibaries}
+                  disabled={this.state.isFilteringLibraries}
+                  onChange={(ev, checked: boolean | undefined) => {
+                    void this.UpdateLibraryFilter(checked || false, this.state.chkShowLists);
+                  }
+                  }
+                  label={strings.LibrariesCheckbox}
+                />
+                <Checkbox
+                  checked={this.state.chkShowLists}
+                  disabled={this.state.isFilteringLibraries}
+                  onChange={(ev, checked: boolean | undefined) => {
+                    void this.UpdateLibraryFilter(this.state.chkShowLibaries, checked || false);
+                  }
+                  }
+                  label={strings.ListsCheckbox}
+                />
+                {this.state.isFilteringLibraries && <Spinner size="tiny" className={styles.progressSpinner} />}
+              </div>
             </div>
-            <ListView                
+            <ListView
               items={this.state.libraryEntries}
               viewFields={this.viewFieldsLibs}
-              compact={true}                
+              compact={true}
               selectionMode={SelectionMode.single}
               selection={this.onLibrarySelectionChanged} />
           </div>
@@ -454,36 +525,49 @@ export default class ContentHealthManager extends React.Component<IContentHealth
 
         {this.state.selectedTabValue === 'tab1' && (
           <div id="Register2" className={styles.row}>
-          <div className={`${styles.row} ${styles.libraryCommands}`}> 
-            <div className={`${styles['col-sm12']} ${styles.libraryCommandsLeft}`}>
-              <Tooltip
-                content={this.state.selectedPage ? strings.TooltipProcessPage : strings.TooltipFindBrokenLinks}
-                relationship="label">
-                <Button icon={<Link24Regular />} onClick={() => this.StartBrokenLinkProcess()} disabled={this.state.isProcessingBrokenLinks}>
-                  {!this.state.selectedPage && <span>{strings.FindBrokenLinks}</span>}
-                  {this.state.selectedPage && <span>{strings.ProcessPage}</span>}
-                </Button>
-              </Tooltip>
-              {this.state.isProcessingBrokenLinks && <Spinner size="tiny" className={styles.progressSpinner} />}
-              &nbsp;
-              <Tooltip content={strings.TooltipOpenPageDetails} relationship="label">
-                <Button icon={<Open24Regular />} onClick={() => this.ShowPageReport()} disabled={!this.state.selectedPage}>{strings.OpenDetails}</Button>
-              </Tooltip>
-              &nbsp;
-              <Tooltip content={this.state.selectedPage ? strings.TooltipShowPermissions : strings.TooltipShowLibraryPermissions} relationship="label">
-                <Button icon={<KeyMultiple24Regular />} onClick={() => this.ShowPagePermissions()}>{strings.PermissionsButtonLabel}</Button>
-              </Tooltip>
+            <div className={`${styles.row} ${styles.libraryCommands}`}>
+              <div className={`${styles['col-sm12']} ${styles.libraryCommandsLeft}`}>
+                <Tooltip
+                  content={this.state.selectedPage ? strings.TooltipProcessPage : strings.TooltipFindBrokenLinks}
+                  relationship="label">
+                  <Button icon={<Link24Regular />} onClick={() => this.StartBrokenLinkProcess()} disabled={this.state.isProcessingBrokenLinks}>
+                    {!this.state.selectedPage && <span>{strings.FindBrokenLinks}</span>}
+                    {this.state.selectedPage && <span>{strings.ProcessPage}</span>}
+                  </Button>
+                </Tooltip>
+                {this.state.isProcessingBrokenLinks && <Spinner size="tiny" className={styles.progressSpinner} />}
+                &nbsp;
+                <Tooltip content={strings.TooltipOpenPageDetails} relationship="label">
+                  <Button icon={<Open24Regular />} onClick={() => this.ShowPageReport()} disabled={!this.state.selectedPage}>{strings.OpenDetails}</Button>
+                </Tooltip>
+                &nbsp;
+                <Tooltip content={this.state.selectedPage ? strings.TooltipShowPermissions : strings.TooltipShowLibraryPermissions} relationship="label">
+                  <Button icon={<KeyMultiple24Regular />} onClick={() => this.ShowPagePermissions()}>{strings.PermissionsButtonLabel}</Button>
+                </Tooltip>
+                &nbsp;
+                <Tooltip content={strings.TooltipLoadPageDetails} relationship="label">
+                  <Button
+                    icon={<Info24Regular />}
+                    onClick={() => this.LoadPageDetails()}
+                    disabled={this.state.isLoadingPageDetails || this.state.pageDetailsLoaded || this.state.pageEntries.length === 0}>
+                    {strings.LoadPageDetailsButtonLabel}
+                  </Button>
+                </Tooltip>
+                {this.state.isLoadingPageDetails && <Spinner size="tiny" className={styles.progressSpinner} />}
+                {this.state.pageDetailsError && (
+                  <div style={{ color: '#d32f2f' }}>{this.state.pageDetailsError}</div>
+                )}
+              </div>
             </div>
+            <ListView
+              items={this.state.pageEntries}
+              viewFields={this.getPageViewFields()}
+              compact={true}
+              selectionMode={SelectionMode.single}
+              selection={this.onListSelectionChanged} />
           </div>
-          <ListView                
-            items={this.state.pageEntries}
-            viewFields={this.viewFieldsPage}
-            compact={true}                
-            selectionMode={SelectionMode.single}
-            selection={this.onListSelectionChanged}/>              
-          </div>
-        )}                
-                
+        )}
+
         <Dialog open={!!this.state.isReportOpen} onOpenChange={(_: any, data: any) => this.setState({ isReportOpen: !!data.open })} modalType={'alert'}>
           <DialogSurface>
             <DialogBody>
@@ -514,92 +598,92 @@ export default class ContentHealthManager extends React.Component<IContentHealth
                               </div>
                               <div style={{ maxHeight: '300px', overflowY: 'auto', marginTop: 8, border: '1px solid #ccc', padding: 8 }}>
                                 {(() => {
-                                  const filteredLinks = this.state.showOnlyBrokenLinks 
+                                  const filteredLinks = this.state.showOnlyBrokenLinks
                                     ? entry.Links.filter((l: LinkInfo) => l.IsBroken)
                                     : entry.Links;
                                   return filteredLinks.length > 0 ? (
                                     filteredLinks.map((link: LinkInfo, index: number) => (
-                                    <div key={index} style={{ 
-                                      padding: '8px', 
-                                      marginBottom: '4px', 
-                                      border: '1px solid #e0e0e0', 
-                                      borderRadius: '4px',
-                                      backgroundColor: link.IsBroken ? '#ffebee' : '#f5f5f5'
-                                    }}>
-                                      <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                                        <span style={{ 
-                                          color: link.IsBroken ? '#d32f2f' : '#2e7d32', 
-                                          fontWeight: 'bold',
-                                          fontSize: '12px'
-                                        }}>
-                                          {link.IsBroken ? '❌ BROKEN' : '✅ OK'}
-                                        </span>
-                                      </div>
-                                      <div style={{ marginTop: '4px' }}>
-                                        <div><strong>{strings.TitleLabel}</strong> {link.title || strings.NoTitle}</div>
-                                        <div><strong>{strings.UrlLabel}</strong> 
-                                          <a href={link.url} target="_blank" rel="noopener noreferrer" style={{ marginLeft: '4px', color: '#0078d4' }}>
-                                          {link.title || strings.NoTitle}
-                                          </a>
+                                      <div key={index} style={{
+                                        padding: '8px',
+                                        marginBottom: '4px',
+                                        border: '1px solid #e0e0e0',
+                                        borderRadius: '4px',
+                                        backgroundColor: link.IsBroken ? '#ffebee' : '#f5f5f5'
+                                      }}>
+                                        <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                                          <span style={{
+                                            color: link.IsBroken ? '#d32f2f' : '#2e7d32',
+                                            fontWeight: 'bold',
+                                            fontSize: '12px'
+                                          }}>
+                                            {link.IsBroken ? '❌ BROKEN' : '✅ OK'}
+                                          </span>
                                         </div>
-                                        {link.Content && link.Content.trim().length > 0 && (
-                                          <div style={{ marginTop: '8px' }}>
-                                            <button
-                                              title={strings.TooltipToggleContent}
-                                              onClick={() => {
-                                                const currentExpanded = this.state.expandedContentSections || new Set<string>();
-                                                const expanded = new Set<string>();
-                                                currentExpanded.forEach(val => expanded.add(val));
-                                                if (expanded.has(link.url)) {
-                                                  expanded.delete(link.url);
-                                                } else {
-                                                  expanded.add(link.url);
-                                                }
-                                                this.setState({ expandedContentSections: expanded });
-                                              }}
-                                              style={{
-                                                display: 'flex',
-                                                alignItems: 'center',
-                                                gap: '4px',
-                                                background: 'none',
-                                                border: 'none',
-                                                cursor: 'pointer',
-                                                color: '#0078d4',
-                                                padding: '4px 0',
-                                                fontSize: '14px'
-                                              }}
-                                            >
-                                              {((this.state.expandedContentSections || new Set<string>()).has(link.url) ? <ChevronUp24Regular /> : <ChevronDown24Regular />)}
-                                              <span>{strings.ShowContent}</span>
-                                            </button>
-                                            {(this.state.expandedContentSections || new Set<string>()).has(link.url) && (
-                                              <div
-                                                style={{
-                                                  marginTop: '8px',
-                                                  padding: '8px',
-                                                  backgroundColor: '#f9f9f9',
-                                                  border: '1px solid #e0e0e0',
-                                                  borderRadius: '4px',
-                                                  maxHeight: '300px',
-                                                  overflowY: 'auto'
-                                                }}
-                                                dangerouslySetInnerHTML={{ __html: link.Content }}
-                                              />
-                                            )}
+                                        <div style={{ marginTop: '4px' }}>
+                                          <div><strong>{strings.TitleLabel}</strong> {link.title || strings.NoTitle}</div>
+                                          <div><strong>{strings.UrlLabel}</strong>
+                                            <a href={link.url} target="_blank" rel="noopener noreferrer" style={{ marginLeft: '4px', color: '#0078d4' }}>
+                                              {link.title || strings.NoTitle}
+                                            </a>
                                           </div>
-                                        )}
+                                          {link.Content && link.Content.trim().length > 0 && (
+                                            <div style={{ marginTop: '8px' }}>
+                                              <button
+                                                title={strings.TooltipToggleContent}
+                                                onClick={() => {
+                                                  const currentExpanded = this.state.expandedContentSections || new Set<string>();
+                                                  const expanded = new Set<string>();
+                                                  currentExpanded.forEach(val => expanded.add(val));
+                                                  if (expanded.has(link.url)) {
+                                                    expanded.delete(link.url);
+                                                  } else {
+                                                    expanded.add(link.url);
+                                                  }
+                                                  this.setState({ expandedContentSections: expanded });
+                                                }}
+                                                style={{
+                                                  display: 'flex',
+                                                  alignItems: 'center',
+                                                  gap: '4px',
+                                                  background: 'none',
+                                                  border: 'none',
+                                                  cursor: 'pointer',
+                                                  color: '#0078d4',
+                                                  padding: '4px 0',
+                                                  fontSize: '14px'
+                                                }}
+                                              >
+                                                {((this.state.expandedContentSections || new Set<string>()).has(link.url) ? <ChevronUp24Regular /> : <ChevronDown24Regular />)}
+                                                <span>{strings.ShowContent}</span>
+                                              </button>
+                                              {(this.state.expandedContentSections || new Set<string>()).has(link.url) && (
+                                                <div
+                                                  style={{
+                                                    marginTop: '8px',
+                                                    padding: '8px',
+                                                    backgroundColor: '#f9f9f9',
+                                                    border: '1px solid #e0e0e0',
+                                                    borderRadius: '4px',
+                                                    maxHeight: '300px',
+                                                    overflowY: 'auto'
+                                                  }}
+                                                  dangerouslySetInnerHTML={{ __html: link.Content }}
+                                                />
+                                              )}
+                                            </div>
+                                          )}
+                                        </div>
                                       </div>
-                                    </div>
                                     ))
                                   ) : null;
                                 })()}
                                 {(() => {
-                                  const filteredLinks = this.state.showOnlyBrokenLinks 
+                                  const filteredLinks = this.state.showOnlyBrokenLinks
                                     ? entry.Links.filter((l: LinkInfo) => l.IsBroken)
                                     : entry.Links;
                                   return filteredLinks.length === 0 ? (
                                     <div style={{ padding: '8px', color: '#666', fontStyle: 'italic' }}>
-                                      {this.state.showOnlyBrokenLinks 
+                                      {this.state.showOnlyBrokenLinks
                                         ? strings.NoBrokenLinksFound
                                         : strings.NoLinksFound}
                                     </div>
@@ -646,7 +730,7 @@ export default class ContentHealthManager extends React.Component<IContentHealth
                     <div><strong>{strings.EnableVersioningLabel}</strong> {this.state.selectedLibrary.EnableVersioning ? strings.Yes : strings.No}</div>
                     <div><strong>{strings.EnableAttachmentsLabel}</strong> {this.state.selectedLibrary.EnableAttachments ? strings.Yes : strings.No}</div>
                     <div><strong>{strings.EnableFolderCreationLabel}</strong> {this.state.selectedLibrary.EnableFolderCreation ? strings.Yes : strings.No}</div>
-                    
+
                     <div style={{ marginTop: 16 }}>
                       <h4>{strings.OverviewListEntries}</h4>
                       {this.state.selectedLibrary.FoundItems && this.state.selectedLibrary.FoundItems.length > 0 ? (
@@ -664,10 +748,10 @@ export default class ContentHealthManager extends React.Component<IContentHealth
                             </Button>
                           </Tooltip>
                           <div style={{ marginTop: 8, maxHeight: '300px' }}>
-                            <ListView                
+                            <ListView
                               items={this.state.selectedLibrary.FoundItems}
                               viewFields={this.viewFieldsFoundItems}
-                              compact={true}                
+                              compact={true}
                               selectionMode={SelectionMode.single}
                               selection={this.onFoundItemSelectionChanged}
                             />
@@ -699,101 +783,104 @@ export default class ContentHealthManager extends React.Component<IContentHealth
               <DialogTitle>{strings.PagePermissionsTitle}</DialogTitle>
               <DialogContent style={{ padding: 12 }}>
                 <div>
-                    <div><strong>{strings.TitleLabel}</strong> {this.state.permissionsSubjectTitle}</div>
-                    {this.state.selectedPage && (
-                      <div><strong>{strings.UrlLabel}</strong> <a href={this.state.selectedPage.webUrl} target={'_blank'} rel={'noreferrer'}>{this.state.selectedPage.webUrl}</a></div>
-                    )}
-                    {this.state.currentArtefact && (
-                      <div style={{ marginTop: 12 }}>
-                        <PeoplePicker
-                          context={{
-                            absoluteUrl: this.state.currentArtefact.webUrl,
-                            msGraphClientFactory: this.props.msGraphClientFactory,
-                            spHttpClient: this.props.spHTTPClient
-                          }}
-                          personSelectionLimit={1}
-                          principalTypes={[PickerPrincipalType.User, PickerPrincipalType.SecurityGroup, PickerPrincipalType.SharePointGroup, PickerPrincipalType.DistributionList]}
-                          placeholder={strings.SearchUserOrGroupPlaceholder}
-                          onChange={(items: IPersonaProps[]) => {
-                            const item = items && items[0] ? items[0] as unknown as IPeoplePickerUserItem : undefined;
-                            if (item) {
-                              void this.checkPrincipalAccess(item);
-                            } else {
-                              this.setState({ principalAccessResult: null, principalAccessError: null });
-                            }
-                          }}
-                        />
-                        {this.state.isCheckingPrincipalAccess && <Spinner size="tiny" className={styles.progressSpinner} />}
-                        {this.state.principalAccessError && (
-                          <div style={{ color: '#d32f2f', marginTop: 8 }}>{this.state.principalAccessError}</div>
-                        )}
-                        {!this.state.isCheckingPrincipalAccess && !this.state.principalAccessError && this.state.principalAccessResult && (
-                          <div style={{ marginTop: 8 }}>
-                            {this.state.principalAccessResult.hasAccess
-                              ? strings.HasAccessLabel
-                                  .replace('{0}', this.state.principalAccessResult.displayName)
-                                  .replace('{1}', this.getPermissionLevelLabel(this.state.principalAccessResult.permissionInfo))
-                              : strings.NoAccessLabel.replace('{0}', this.state.principalAccessResult.displayName)}
-                          </div>
-                        )}
-                      </div>
-                    )}
-                    {this.state.isLoadingPagePermissions && <Spinner size="tiny" className={styles.progressSpinner} />}
-                    {this.state.pagePermissionsError && (
-                      <div style={{ color: '#d32f2f', marginTop: 8 }}>{this.state.pagePermissionsError}</div>
-                    )}
-                    {!this.state.isLoadingPagePermissions && !this.state.pagePermissionsError && this.state.pagePermissions.length === 0 && (
-                      <div style={{ marginTop: 8 }}>{strings.NoPermissionsFound}</div>
-                    )}
-                    {!this.state.isLoadingPagePermissions && !this.state.pagePermissionsError && this.state.pagePermissions.length > 0 && (
-                      <PanelGroup direction="horizontal" style={{ height: 420, marginTop: 12 }}>
-                        <Panel defaultSize={30} minSize={15} maxSize={60}>
-                          <div style={{ height: '100%', overflow: 'auto', borderRight: '1px solid #e0e0e0' }}>
-                            <Tree
-                              openItems={this.state.openTreeNodeKeys}
-                              onOpenChange={this.handleTreeOpenChange}
-                              aria-label={strings.PagePermissionsTitle}
-                            >
-                              <TreeItem itemType="leaf" value="root">
-                                <TreeItemLayout
-                                  onClick={() => this.selectTreeNode('root')}
-                                  style={this.state.selectedTreeNodeKey === 'root' ? { background: '#e0e0e0' } : undefined}
-                                >
-                                  {this.state.permissionsSubjectTitle}
-                                </TreeItemLayout>
-                              </TreeItem>
-                              {this.state.permissionGroupTree.map(node => this.renderGroupTreeNode(node))}
-                            </Tree>
-                          </div>
-                        </Panel>
-                        <PanelResizeHandle style={{ width: 6, cursor: 'col-resize', background: '#e0e0e0' }} />
-                        <Panel>
-                          <div style={{ height: '100%', overflow: 'auto', paddingLeft: 8 }}>
-                            {this.state.selectedTreeNodeKey === 'root' ? (
-                              <ListView
-                                items={this.state.pagePermissions.filter(p => !p.isGroup)}
-                                viewFields={this.viewFieldsPermissions}
-                                compact={true}
-                                selectionMode={SelectionMode.none} />
-                            ) : (
-                              <>
-                                {this.state.isLoadingGroupMembers && <Spinner size="tiny" className={styles.progressSpinner} />}
-                                {this.state.groupMembersError && (
-                                  <div style={{ color: '#d32f2f', marginTop: 8 }}>{this.state.groupMembersError}</div>
-                                )}
-                                {!this.state.isLoadingGroupMembers && !this.state.groupMembersError && (
-                                  <ListView
-                                    items={this.state.groupMemberCache.get(this.state.selectedTreeNodeKey) || []}
-                                    viewFields={this.viewFieldsGroupMembers}
-                                    compact={true}
-                                    selectionMode={SelectionMode.none} />
-                                )}
-                              </>
-                            )}
-                          </div>
-                        </Panel>
-                      </PanelGroup>
-                    )}
+                  <div><strong>{strings.TitleLabel}</strong> {this.state.permissionsSubjectTitle}</div>
+                  {this.state.selectedPage && (
+                    <div><strong>{strings.UrlLabel}</strong> <a href={this.state.selectedPage.webUrl} target={'_blank'} rel={'noreferrer'}>{this.state.selectedPage.webUrl}</a></div>
+                  )}
+                  {this.state.currentArtefact && (
+                    <div style={{ marginTop: 12 }}>
+                      <PeoplePicker
+                        context={{
+                          absoluteUrl: this.state.currentArtefact.webUrl,
+                          msGraphClientFactory: this.props.msGraphClientFactory,
+                          spHttpClient: this.props.spHTTPClient
+                        }}
+                        showtooltip={true}
+                        personSelectionLimit={1}
+                        principalTypes={[PickerPrincipalType.User, PickerPrincipalType.SecurityGroup, PickerPrincipalType.SharePointGroup, PickerPrincipalType.DistributionList]}
+                        useSubstrateSearch={false}
+                        searchTextLimit={2}
+                        placeholder={strings.SearchUserOrGroupPlaceholder}
+                        onChange={(items: IPersonaProps[]) => {
+                          const item = items && items[0] ? items[0] as unknown as IPeoplePickerUserItem : undefined;
+                          if (item) {
+                            void this.checkPrincipalAccess(item);
+                          } else {
+                            this.setState({ principalAccessResult: null, principalAccessError: null });
+                          }
+                        }}
+                      />
+                      {this.state.isCheckingPrincipalAccess && <Spinner size="tiny" className={styles.progressSpinner} />}
+                      {this.state.principalAccessError && (
+                        <div style={{ color: '#d32f2f', marginTop: 8 }}>{this.state.principalAccessError}</div>
+                      )}
+                      {!this.state.isCheckingPrincipalAccess && !this.state.principalAccessError && this.state.principalAccessResult && (
+                        <div style={{ marginTop: 8 }}>
+                          {this.state.principalAccessResult.hasAccess
+                            ? strings.HasAccessLabel
+                              .replace('{0}', this.state.principalAccessResult.displayName)
+                              .replace('{1}', this.getPermissionLevelLabel(this.state.principalAccessResult.permissionInfo))
+                            : strings.NoAccessLabel.replace('{0}', this.state.principalAccessResult.displayName)}
+                        </div>
+                      )}
+                    </div>
+                  )}
+                  {this.state.isLoadingPagePermissions && <Spinner size="tiny" className={styles.progressSpinner} />}
+                  {this.state.pagePermissionsError && (
+                    <div style={{ color: '#d32f2f', marginTop: 8 }}>{this.state.pagePermissionsError}</div>
+                  )}
+                  {!this.state.isLoadingPagePermissions && !this.state.pagePermissionsError && this.state.pagePermissions.length === 0 && (
+                    <div style={{ marginTop: 8 }}>{strings.NoPermissionsFound}</div>
+                  )}
+                  {!this.state.isLoadingPagePermissions && !this.state.pagePermissionsError && this.state.pagePermissions.length > 0 && (
+                    <PanelGroup direction="horizontal" style={{ height: 420, marginTop: 12 }}>
+                      <Panel defaultSize={30} minSize={15} maxSize={60}>
+                        <div style={{ height: '100%', overflow: 'auto', borderRight: '1px solid #e0e0e0' }}>
+                          <Tree
+                            openItems={this.state.openTreeNodeKeys}
+                            onOpenChange={this.handleTreeOpenChange}
+                            aria-label={strings.PagePermissionsTitle}
+                          >
+                            <TreeItem itemType="leaf" value="root">
+                              <TreeItemLayout
+                                onClick={() => this.selectTreeNode('root')}
+                                style={this.state.selectedTreeNodeKey === 'root' ? { background: '#e0e0e0' } : undefined}
+                              >
+                                {this.state.permissionsSubjectTitle}
+                              </TreeItemLayout>
+                            </TreeItem>
+                            {this.state.permissionGroupTree.map(node => this.renderGroupTreeNode(node))}
+                          </Tree>
+                        </div>
+                      </Panel>
+                      <PanelResizeHandle style={{ width: 6, cursor: 'col-resize', background: '#e0e0e0' }} />
+                      <Panel>
+                        <div style={{ height: '100%', overflow: 'auto', paddingLeft: 8 }}>
+                          {this.state.selectedTreeNodeKey === 'root' ? (
+                            <ListView
+                              items={this.state.pagePermissions.filter(p => !p.isGroup)}
+                              viewFields={this.viewFieldsPermissions}
+                              compact={true}
+                              selectionMode={SelectionMode.none} />
+                          ) : (
+                            <>
+                              {this.state.isLoadingGroupMembers && <Spinner size="tiny" className={styles.progressSpinner} />}
+                              {this.state.groupMembersError && (
+                                <div style={{ color: '#d32f2f', marginTop: 8 }}>{this.state.groupMembersError}</div>
+                              )}
+                              {!this.state.isLoadingGroupMembers && !this.state.groupMembersError && (
+                                <ListView
+                                  items={this.state.groupMemberCache.get(this.state.selectedTreeNodeKey) || []}
+                                  viewFields={this.viewFieldsGroupMembers}
+                                  compact={true}
+                                  selectionMode={SelectionMode.none} />
+                              )}
+                            </>
+                          )}
+                        </div>
+                      </Panel>
+                    </PanelGroup>
+                  )}
                 </div>
               </DialogContent>
               <DialogActions>
@@ -809,19 +896,17 @@ export default class ContentHealthManager extends React.Component<IContentHealth
   }
 
   public async componentDidMount(): Promise<void> {
-    
+
   }
 
-  private ShowLibraryReport():void
-  {
+  private ShowLibraryReport(): void {
     if (!this.state.selectedLibrary) {
       return;
     }
     this.setState({ isLibraryReportOpen: true });
   }
 
-  private ShowPageReport():void
-  {
+  private ShowPageReport(): void {
     if (!this.state.selectedPage) {
       return;
     }
@@ -887,6 +972,26 @@ export default class ContentHealthManager extends React.Component<IContentHealth
     }
   }
 
+  private async LoadPageDetails(): Promise<void> {
+    const site = this.GetSelectedSite();
+    if (!site) {
+      return;
+    }
+    this.setState({ isLoadingPageDetails: true, pageDetailsError: null });
+    try {
+      const entries = await Promise.all(this.state.pageEntries.map(async (page): Promise<[string, PageStatusInfo]> => {
+        const status = await this.permissionsManager.getPageStatus(site.url, page.webUrl!);
+        return [page.id, status];
+      }));
+      this.setState({ pageDetailsCache: new Map(entries), pageDetailsLoaded: true });
+    } catch (error) {
+      console.error('Error loading page details:', error);
+      this.setState({ pageDetailsError: error instanceof Error ? error.message : String(error) });
+    } finally {
+      this.setState({ isLoadingPageDetails: false });
+    }
+  }
+
   private getPermissionLevelLabel(info: SharePointPermissionInfo): string {
     if (info.hasFullControl || info.canManagePermissions) {
       return strings.FullControlLabel;
@@ -910,12 +1015,12 @@ export default class ContentHealthManager extends React.Component<IContentHealth
     const groupInfo: SharePointGroupInfo = 'webUrl' in source
       ? source
       : {
-          webUrl,
-          principalId: source.principalId,
-          principalType: source.principalType,
-          loginName: source.loginName,
-          displayName: source.displayName
-        };
+        webUrl,
+        principalId: source.principalId,
+        principalType: source.principalType,
+        loginName: source.loginName,
+        displayName: source.displayName
+      };
     const key = groupInfo.principalId !== undefined ? `id:${groupInfo.principalId}` : `login:${groupInfo.loginName}`;
     return { key, groupInfo, children: undefined };
   }
@@ -1030,8 +1135,7 @@ export default class ContentHealthManager extends React.Component<IContentHealth
     );
   }
 
-  private async StartBrokenLinkProcess(): Promise<void>
-  {       
+  private async StartBrokenLinkProcess(): Promise<void> {
     if (!this.state.selectedSiteId) {
       console.warn('No site selected. Please select a site first.');
       return;
@@ -1051,7 +1155,7 @@ export default class ContentHealthManager extends React.Component<IContentHealth
     const pageAnalyzer = new PageProcessing();
     try {
       // Iterate over all page entries and get their full content
-      
+
       if (this.state.selectedPage) {
         const fullPageContent = await this.dataManager.GetPageContent(this.state.selectedSiteId, this.state.selectedPage.id);
         const resultLinks = await pageAnalyzer.AnalyzePageContent(fullPageContent.canvasLayout!);
@@ -1064,26 +1168,26 @@ export default class ContentHealthManager extends React.Component<IContentHealth
         for (const pageEntry of this.state.pageEntries) {
           try {
             console.log(`Processing page: ${pageEntry.title || pageEntry.name} (ID: ${pageEntry.InProgress})`);
-            
+
             // Get the full page content using GetPageContent method
             const fullPageContent = await this.dataManager.GetPageContent(this.state.selectedSiteId, pageEntry.id);
-                      
+
             // TODO: Add broken link detection logic here
-            const resultLinks = await pageAnalyzer.AnalyzePageContent(fullPageContent.canvasLayout!);          
+            const resultLinks = await pageAnalyzer.AnalyzePageContent(fullPageContent.canvasLayout!);
             this.state.pageResults.push({
               pageID: pageEntry.id,
               Links: resultLinks!
             });
-            
+
             this.setState({
               pageEntries: this.state.pageEntries
             })
-            
+
           } catch (error) {
             console.error(`Error processing page ${pageEntry.title || pageEntry.name}:`, error);
           }
-        }    
-      }        
+        }
+      }
       /*this.setState({
         pageEntries: this.state.pageEntries
       })*/
@@ -1094,53 +1198,50 @@ export default class ContentHealthManager extends React.Component<IContentHealth
     }
   }
 
-  public async CollectItemsFromListAndLibraries():Promise<void>
-  {
-    const site : Site = this.GetSelectedSite();
+  public async CollectItemsFromListAndLibraries(): Promise<void> {
+    const site: Site = this.GetSelectedSite();
     console.log(this.state.selectedLibrary);
     if (this.state.selectedLibrary) {
       const items = await this.dataManager.Query4ItemByDate(
         site,
-        this.state.selectedLibrary.Id,        
+        this.state.selectedLibrary.Id,
         this.state.selectedLibrary.ParentWebUrl!,
         this.state.dateStartDate!
       );
       this.state.selectedLibrary.FoundItems = items;
-    } 
-    else 
-    {
+    }
+    else {
       for (const listInfo of this.state.libraryEntries) {
         const items = await this.dataManager.Query4ItemByDate(
           site,
-          listInfo.Id,        
+          listInfo.Id,
           listInfo.ParentWebUrl!,
           this.state.dateStartDate!
         );
-        listInfo.FoundItems = items;            
-        this.setState({ 
-          libraryEntries: this.state.libraryEntries      
-        });   
+        listInfo.FoundItems = items;
+        this.setState({
+          libraryEntries: this.state.libraryEntries
+        });
       }
     }
-    this.setState({ 
-      libraryEntries: this.state.libraryEntries      
+    this.setState({
+      libraryEntries: this.state.libraryEntries
     });
   }
 
-  public async GetCheckedOutItems():Promise<void>
-  {
-    const site : Site = this.GetSelectedSite();
+  public async GetCheckedOutItems(): Promise<void> {
+    const site: Site = this.GetSelectedSite();
     for (const listInfo of this.state.libraryEntries) {
       const items = await this.dataManager.Query4CheckedOutItems(
         site,
-        listInfo.Id,        
+        listInfo.Id,
         listInfo.DefaultView.ServerRelativeUrl,
         this.state.dateStartDate!
       );
-      listInfo.FoundItems = items;                  
-      this.setState({ 
-        libraryEntries: this.state.libraryEntries      
-      });   
+      listInfo.FoundItems = items;
+      this.setState({
+        libraryEntries: this.state.libraryEntries
+      });
     }
   }
 
@@ -1188,12 +1289,12 @@ export default class ContentHealthManager extends React.Component<IContentHealth
     this.setState({ isFilteringLibraries: true });
     const pages = await dataManager.GetPages4Site(data.optionValue);
     this.setState({
-      selectedTabValue: this.state.selectedTabValue === null ? "tab1":this.state.selectedTabValue,
+      selectedTabValue: this.state.selectedTabValue === null ? "tab1" : this.state.selectedTabValue,
       pageEntries: pages,
       selectedSiteId: data.optionValue
     });
     try {
-      const siteInfo : Site = this.state.SelectedSites.filter(x=>x.id === data.optionValue)[0];
+      const siteInfo: Site = this.state.SelectedSites.filter(x => x.id === data.optionValue)[0];
       const libraries = await dataManager.GetAllLists(siteInfo.url, this.state.chkShowLists, this.state.chkShowLibaries);
       console.log("All lists", libraries);
       this.setState({
@@ -1214,12 +1315,11 @@ export default class ContentHealthManager extends React.Component<IContentHealth
     if (selected !== null)
       this.setState({ selectedLibrary: this.GetLibraryEntryByIndex(selected!.Id) });
     else
-    this.setState({ selectedLibrary: null });
+      this.setState({ selectedLibrary: null });
   }
 
-  private GetSelectedSite() : Site
-  {
-    return this.state.SelectedSites.filter(x=>x.id === this.state.selectedSiteId)[0] as Site;
+  private GetSelectedSite(): Site {
+    return this.state.SelectedSites.filter(x => x.id === this.state.selectedSiteId)[0] as Site;
   }
 
   private onTabSelect = (event: any, data: { value: TabValue }): void => {
@@ -1237,7 +1337,7 @@ export default class ContentHealthManager extends React.Component<IContentHealth
       return;
     }
 
-    const site = this.GetSelectedSite();    
+    const site = this.GetSelectedSite();
     await this.GetPermission4SelectedItem(site, this.state.selectedLibrary.Id, this.state.selectedFoundItem.Id);
   }
 }

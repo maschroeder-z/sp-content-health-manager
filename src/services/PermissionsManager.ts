@@ -1,6 +1,7 @@
 import { ISPHttpClientOptions, MSGraphClientFactory, MSGraphClientV3, SPHttpClient } from '@microsoft/sp-http';
 import * as MicrosoftGraphBeta from "@microsoft/microsoft-graph-types-beta";
 import {
+  PageStatusInfo,
   PermissionKind,
   PrincipalAccessReport,
   PrincipalReference,
@@ -189,6 +190,53 @@ export class PermissionsManager {
       };
     } catch (error) {
       console.error('Error resolving artefact from file URL:', error);
+      throw error;
+    }
+  }
+
+  /**
+   * Retrieves the extra per-page status shown by the Pages overview list's "Load details" action:
+   * whether the page has an unpublished draft, whether it has unique (non-inherited) permissions,
+   * and who (if anyone) has it checked out. Fetched in a single REST call by extending the same
+   * GetFileByServerRelativeUrl/ListItemAllFields query shape used by resolveArtefactFromFileUrl.
+   */
+  public async getPageStatus(webUrl: string, fileUrl: string): Promise<PageStatusInfo> {
+    try {
+      const normalizedWebUrl = this.normalizeWebUrl(webUrl);
+      const serverRelativeUrl = this.toServerRelativeUrl(fileUrl);
+
+      const encodedServerRelativeUrl = serverRelativeUrl
+        .replace(/'/g, "''")
+        .replace(/\(/g, '%28')
+        .replace(/\)/g, '%29');
+
+      const response = await this.spHttpClient.get(
+        `${normalizedWebUrl}/_api/web/GetFileByServerRelativeUrl('${encodedServerRelativeUrl}')/ListItemAllFields` +
+        `?$select=HasUniqueRoleAssignments,File/Level,File/CheckOutType,File/CheckedOutByUser/Title` +
+        `&$expand=File,File/CheckedOutByUser`,
+        SPHttpClient.configurations.v1,
+        { headers: { 'Accept': 'application/json;odata=verbose' } }
+      );
+
+      if (!response.ok) {
+        throw new Error(`HTTP error! status: ${response.status}`);
+      }
+
+      const data = await response.json();
+      const entity = this.unwrapEntity(data);
+      const file = entity?.File;
+      // SP.CheckOutType: 0 = Online, 1 = Offline, 2 = None (not checked out)
+      const checkedOutBy = (file && file.CheckOutType !== 2 && file.CheckedOutByUser)
+        ? file.CheckedOutByUser.Title
+        : null;
+
+      return {
+        needsApproval: file?.Level === 'Draft',
+        hasUniquePermission: !!entity?.HasUniqueRoleAssignments,
+        checkedOutBy
+      };
+    } catch (error) {
+      console.error('Error retrieving page status:', error);
       throw error;
     }
   }

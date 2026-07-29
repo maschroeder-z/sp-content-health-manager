@@ -3,6 +3,16 @@ https://learn.microsoft.com/en-us/sharepoint/dev/spfx/office-ui-fabric-integrati
 */
 @import '~@microsoft/sp-office-ui-fabric-core/dist/sass/SPFabricCore.scss';
 
+// Fluent v8's Layer service portals Callout content (e.g. the PnP PeoplePicker's suggestion
+// dropdown) into a singleton "#fluent-default-layer-host" div, created once as an early child
+// of <body>. That div - not the ".ms-Layer--fixed" nested inside it - is what actually competes
+// for stacking order against the Fluent v9 Dialog's later-in-DOM "fui-FluentProvider" portal
+// divs, and both sit at z-index 1000000. Raising the inner element's z-index has no effect since
+// it can't escape its own ancestor's position in the outer stacking order - the outer host itself
+// has to win instead.
+:global(#fluent-default-layer-host) {
+  z-index: 1000001 !important;
+}
 
 .row {
   @include ms-Grid-row;

@@ -224,13 +224,62 @@ var PermissionsManager = /** @class */ (function () {
         });
     };
     /**
+     * Retrieves the extra per-page status shown by the Pages overview list's "Load details" action:
+     * whether the page has an unpublished draft, whether it has unique (non-inherited) permissions,
+     * and who (if anyone) has it checked out. Fetched in a single REST call by extending the same
+     * GetFileByServerRelativeUrl/ListItemAllFields query shape used by resolveArtefactFromFileUrl.
+     */
+    PermissionsManager.prototype.getPageStatus = function (webUrl, fileUrl) {
+        return tslib_1.__awaiter(this, void 0, void 0, function () {
+            var normalizedWebUrl, serverRelativeUrl, encodedServerRelativeUrl, response, data, entity, file, checkedOutBy, error_5;
+            return tslib_1.__generator(this, function (_a) {
+                switch (_a.label) {
+                    case 0:
+                        _a.trys.push([0, 3, , 4]);
+                        normalizedWebUrl = this.normalizeWebUrl(webUrl);
+                        serverRelativeUrl = this.toServerRelativeUrl(fileUrl);
+                        encodedServerRelativeUrl = serverRelativeUrl
+                            .replace(/'/g, "''")
+                            .replace(/\(/g, '%28')
+                            .replace(/\)/g, '%29');
+                        return [4 /*yield*/, this.spHttpClient.get("".concat(normalizedWebUrl, "/_api/web/GetFileByServerRelativeUrl('").concat(encodedServerRelativeUrl, "')/ListItemAllFields") +
+                                "?$select=HasUniqueRoleAssignments,File/Level,File/CheckOutType,File/CheckedOutByUser/Title" +
+                                "&$expand=File,File/CheckedOutByUser", sp_http_1.SPHttpClient.configurations.v1, { headers: { 'Accept': 'application/json;odata=verbose' } })];
+                    case 1:
+                        response = _a.sent();
+                        if (!response.ok) {
+                            throw new Error("HTTP error! status: ".concat(response.status));
+                        }
+                        return [4 /*yield*/, response.json()];
+                    case 2:
+                        data = _a.sent();
+                        entity = this.unwrapEntity(data);
+                        file = entity === null || entity === void 0 ? void 0 : entity.File;
+                        checkedOutBy = (file && file.CheckOutType !== 2 && file.CheckedOutByUser)
+                            ? file.CheckedOutByUser.Title
+                            : null;
+                        return [2 /*return*/, {
+                                needsApproval: (file === null || file === void 0 ? void 0 : file.Level) === 'Draft',
+                                hasUniquePermission: !!(entity === null || entity === void 0 ? void 0 : entity.HasUniqueRoleAssignments),
+                                checkedOutBy: checkedOutBy
+                            }];
+                    case 3:
+                        error_5 = _a.sent();
+                        console.error('Error retrieving page status:', error_5);
+                        throw error_5;
+                    case 4: return [2 /*return*/];
+                }
+            });
+        });
+    };
+    /**
      * Resolves the site's pages library (the "Site Pages" list, BaseTemplate 119 - WebPageLibrary) as a
      * List-type artefact, for checking permissions on the library itself rather than a single page.
      * Filtering by BaseTemplate rather than title keeps this locale-independent.
      */
     PermissionsManager.prototype.resolvePagesLibraryArtefact = function (webUrl) {
         return tslib_1.__awaiter(this, void 0, void 0, function () {
-            var normalizedWebUrl, response, data, lists, listId, error_5;
+            var normalizedWebUrl, response, data, lists, listId, error_6;
             var _a;
             return tslib_1.__generator(this, function (_b) {
                 switch (_b.label) {
@@ -257,9 +306,9 @@ var PermissionsManager = /** @class */ (function () {
                                 listId: listId
                             }];
                     case 3:
-                        error_5 = _b.sent();
-                        console.error('Error resolving pages library artefact:', error_5);
-                        throw error_5;
+                        error_6 = _b.sent();
+                        console.error('Error resolving pages library artefact:', error_6);
+                        throw error_6;
                     case 4: return [2 /*return*/];
                 }
             });
@@ -267,7 +316,7 @@ var PermissionsManager = /** @class */ (function () {
     };
     PermissionsManager.prototype.hasUniquePermission = function (artefact) {
         return tslib_1.__awaiter(this, void 0, void 0, function () {
-            var error_6;
+            var error_7;
             return tslib_1.__generator(this, function (_a) {
                 switch (_a.label) {
                     case 0:
@@ -275,9 +324,9 @@ var PermissionsManager = /** @class */ (function () {
                         return [4 /*yield*/, this.getHasUniqueRoleAssignments(this.buildBaseUrl(artefact))];
                     case 1: return [2 /*return*/, _a.sent()];
                     case 2:
-                        error_6 = _a.sent();
-                        console.error('Error checking unique permissions:', error_6);
-                        throw error_6;
+                        error_7 = _a.sent();
+                        console.error('Error checking unique permissions:', error_7);
+                        throw error_7;
                     case 3: return [2 /*return*/];
                 }
             });
@@ -290,7 +339,7 @@ var PermissionsManager = /** @class */ (function () {
      */
     PermissionsManager.prototype.resolveUser4Group = function (groupInfo) {
         return tslib_1.__awaiter(this, void 0, void 0, function () {
-            var entraGroupId, error_7;
+            var entraGroupId, error_8;
             return tslib_1.__generator(this, function (_a) {
                 switch (_a.label) {
                     case 0:
@@ -308,9 +357,9 @@ var PermissionsManager = /** @class */ (function () {
                     case 3: return [2 /*return*/, _a.sent()];
                     case 4: throw new Error("Unsupported group principal (not a SharePoint group or Entra-backed security group): ".concat(groupInfo.loginName || groupInfo.displayName));
                     case 5:
-                        error_7 = _a.sent();
-                        console.error('Error resolving group users:', error_7);
-                        throw error_7;
+                        error_8 = _a.sent();
+                        console.error('Error resolving group users:', error_8);
+                        throw error_8;
                     case 6: return [2 /*return*/];
                 }
             });
@@ -323,7 +372,7 @@ var PermissionsManager = /** @class */ (function () {
      */
     PermissionsManager.prototype.resolveNestedGroups = function (groupInfo) {
         return tslib_1.__awaiter(this, void 0, void 0, function () {
-            var entraGroupId, error_8;
+            var entraGroupId, error_9;
             return tslib_1.__generator(this, function (_a) {
                 switch (_a.label) {
                     case 0:
@@ -341,9 +390,9 @@ var PermissionsManager = /** @class */ (function () {
                     case 3: return [2 /*return*/, _a.sent()];
                     case 4: throw new Error("Unsupported group principal (not a SharePoint group or Entra-backed security group): ".concat(groupInfo.loginName || groupInfo.displayName));
                     case 5:
-                        error_8 = _a.sent();
-                        console.error('Error resolving nested groups:', error_8);
-                        throw error_8;
+                        error_9 = _a.sent();
+                        console.error('Error resolving nested groups:', error_9);
+                        throw error_9;
                     case 6: return [2 /*return*/];
                 }
             });
@@ -535,7 +584,7 @@ var PermissionsManager = /** @class */ (function () {
     };
     PermissionsManager.prototype.resolveLoginName = function (webUrl, loginHint) {
         return tslib_1.__awaiter(this, void 0, void 0, function () {
-            var options, response, data, error_9;
+            var options, response, data, error_10;
             var _a;
             return tslib_1.__generator(this, function (_b) {
                 switch (_b.label) {
@@ -561,8 +610,8 @@ var PermissionsManager = /** @class */ (function () {
                         data = _b.sent();
                         return [2 /*return*/, (_a = this.unwrapEntity(data)) === null || _a === void 0 ? void 0 : _a.LoginName];
                     case 4:
-                        error_9 = _b.sent();
-                        throw new Error("User could not be resolved on this web (".concat(loginHint, "): ").concat(error_9));
+                        error_10 = _b.sent();
+                        throw new Error("User could not be resolved on this web (".concat(loginHint, "): ").concat(error_10));
                     case 5: return [2 /*return*/];
                 }
             });

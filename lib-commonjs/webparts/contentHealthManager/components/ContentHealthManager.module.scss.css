@@ -5,6 +5,10 @@ https://learn.microsoft.com/en-us/sharepoint/dev/spfx/office-ui-fabric-integrati
 /*
   Your use of the content in the files referenced here is subject to the terms of the license at http://aka.ms/fabric-assets-license
 */
+:global(#fluent-default-layer-host) {
+  z-index: 1000001 !important;
+}
+
 .row {
   margin: 0 -8px;
   box-sizing: border-box;

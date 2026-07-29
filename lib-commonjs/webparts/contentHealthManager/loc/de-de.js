@@ -52,6 +52,7 @@ define([], function() {
     "TooltipShowPermissions": "Zeigt die SharePoint-Berechtigungen für das ausgewählte Element an",
     "TooltipCloseDialog": "Schließt diesen Dialog",
     "TooltipToggleContent": "Zeigt oder verbirgt den erfassten Seiteninhalt rund um diesen Link",
+    "TooltipLoadPageDetails": "Genehmigungs-, Berechtigungs- und Auscheckstatus für alle Seiten in der Liste laden",
     "PageReportTitle": "Seitenbericht",
     "TitleLabel": "Titel:",
     "UrlLabel": "URL:",
@@ -114,7 +115,12 @@ define([], function() {
     "UserChangedLabel": "Von Benutzer geändert",
     "LastDeletionLabel": "letzte Löschung",
     "FoundLinksCount": "Gefunden {0}. Defekte Links: {1}",
-    "BrokenLinksCount": "Defekte Links: {0}"
+    "BrokenLinksCount": "Defekte Links: {0}",
+    "LoadPageDetailsButtonLabel": "Details laden",
+    "NeedsApprovalLabel": "Genehmigung erforderlich",
+    "HasUniquePermissionLabel": "Eindeutige Berechtigungen",
+    "CheckedOutLabel": "Ausgecheckt",
+    "NotCheckedOut": "Nicht ausgecheckt"
   }
 });
 

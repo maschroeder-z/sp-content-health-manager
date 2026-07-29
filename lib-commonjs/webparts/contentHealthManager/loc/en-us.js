@@ -52,6 +52,7 @@ define([], function() {
     "TooltipShowPermissions": "Show the SharePoint permissions for the selected item",
     "TooltipCloseDialog": "Close this dialog",
     "TooltipToggleContent": "Show or hide the raw page content captured around this link",
+    "TooltipLoadPageDetails": "Load approval, permission and checkout status for every page in the list",
     "PageReportTitle": "Page report",
     "TitleLabel": "Title:",
     "UrlLabel": "URL:",
@@ -114,6 +115,11 @@ define([], function() {
     "UserChangedLabel": "User changed",
     "LastDeletionLabel": "last deletion",
     "FoundLinksCount": "Found {0}. Broken links: {1}",
-    "BrokenLinksCount": "Broken links: {0}"
+    "BrokenLinksCount": "Broken links: {0}",
+    "LoadPageDetailsButtonLabel": "Load details",
+    "NeedsApprovalLabel": "Needs approval",
+    "HasUniquePermissionLabel": "Unique permissions",
+    "CheckedOutLabel": "Checked out",
+    "NotCheckedOut": "Not checked out"
   }
 });

@@ -87,3 +87,10 @@ export interface PrincipalAccessReport {
   hasAccess: boolean;
   permissionInfo: SharePointPermissionInfo;
 }
+
+/** Extra per-page status fetched on demand for the Pages overview list's "Load details" action. */
+export interface PageStatusInfo {
+  needsApproval: boolean;        // SP.File Level === 'Draft': saved changes not yet published
+  hasUniquePermission: boolean;
+  checkedOutBy: string | null;   // display name of the user with the page checked out, or null if not checked out
+}
