@@ -77,11 +77,41 @@ var ContentHealthManager = /** @class */ (function (_super) {
                         return item.ContentType;
                     return item["ContentType.Name"];
                 }
+            },
+            {
+                name: 'CheckedOutBy', displayName: strings.CheckedOutLabel, sorting: true, isResizable: true,
+                render: function (item) {
+                    if (_this.state.selectedLibrary && !_this.SupportsCheckout(_this.state.selectedLibrary))
+                        return React.createElement("span", null, strings.CheckoutNotSupported);
+                    return React.createElement("span", null, item.CheckedOutBy || '');
+                }
             }
         ];
         // BaseTemplate BaseType EnableAttachments EnableFolderCreation EnableVersioning ForceCheckout ItemCount LastItemModifiedDate LastItemUserModifiedDate
         _this.viewFieldsLibs = [
-            { name: 'Title', displayName: 'Title', sorting: true, isResizable: true, minWidth: 120, linkPropertyName: 'DefaultView.ServerRelativeUrl' },
+            {
+                name: 'Title', displayName: 'Title', sorting: true, isResizable: true, minWidth: 120,
+                render: function (item) {
+                    var _a, _b;
+                    // BaseType: 1 = Document Library, everything else (0 = Generic List, etc.) is a list.
+                    var isLibrary = item.BaseType === 1;
+                    var TypeIcon = isLibrary ? react_icons_1.Library16Regular : react_icons_1.List16Regular;
+                    // ServerRelativeUrl is relative to the tenant root, not the workbench/host origin,
+                    // so it's resolved against the selected site's own origin rather than used as-is.
+                    // Falls back to the list settings page (always resolvable from Id) if the default
+                    // view's URL wasn't returned by the lists REST call for some reason.
+                    var siteUrl = (_a = _this.GetSelectedSite()) === null || _a === void 0 ? void 0 : _a.url;
+                    var originMatch = siteUrl === null || siteUrl === void 0 ? void 0 : siteUrl.match(/^https?:\/\/[^/]+/);
+                    var origin = originMatch ? originMatch[0] : undefined;
+                    var serverRelativeUrl = (_b = item.DefaultView) === null || _b === void 0 ? void 0 : _b.ServerRelativeUrl;
+                    var href = origin
+                        ? (serverRelativeUrl ? "".concat(origin).concat(serverRelativeUrl) : "".concat(siteUrl, "/_layouts/15/listedit.aspx?List=").concat(item.Id))
+                        : undefined;
+                    return (React.createElement("a", { href: href, target: '_blank', rel: 'noreferrer', title: isLibrary ? strings.LibraryTypeLabel : strings.ListTypeLabel },
+                        React.createElement(TypeIcon, { className: ContentHealthManager_module_scss_1.default.inlineIcon }),
+                        item.Title));
+                }
+            },
             { name: 'ItemCount', displayName: 'Items', sorting: true, isResizable: true, minWidth: 120 },
             {
                 name: 'FoundItems', displayName: strings.FoundLabel, sorting: true, isResizable: true, minWidth: 120,
@@ -129,8 +159,11 @@ var ContentHealthManager = /** @class */ (function (_super) {
                 render: function (item, index, column) {
                     var _a;
                     var entry = _this.GetLibraryEntryByIndex(item.Id);
-                    if (typeof entry.FoundItems !== "undefined" && entry.FoundItems !== null) {
-                        return React.createElement(spfx_controls_react_1.FieldTextRenderer, { text: "".concat(strings.FoundLabel, ": ").concat((_a = entry.FoundItems) === null || _a === void 0 ? void 0 : _a.length) });
+                    if (entry.FoundItemsUnsupported) {
+                        return React.createElement(spfx_controls_react_1.FieldTextRenderer, { text: strings.CheckoutNotSupported });
+                    }
+                    else if (typeof entry.FoundCheckedOutItems !== "undefined" && entry.FoundCheckedOutItems !== null) {
+                        return React.createElement(spfx_controls_react_1.FieldTextRenderer, { text: "".concat(strings.FoundLabel, ": ").concat((_a = entry.FoundCheckedOutItems) === null || _a === void 0 ? void 0 : _a.length) });
                     }
                     else
                         return React.createElement(spfx_controls_react_1.FieldTextRenderer, { text: strings.StartQueryForResults });
@@ -669,15 +702,24 @@ var ContentHealthManager = /** @class */ (function (_super) {
                                 this.state.selectedLibrary.EnableFolderCreation ? strings.Yes : strings.No),
                             React.createElement("div", { style: { marginTop: 16 } },
                                 React.createElement("h4", null, strings.OverviewListEntries),
-                                this.state.selectedLibrary.FoundItems && this.state.selectedLibrary.FoundItems.length > 0 ? (React.createElement("div", null,
-                                    React.createElement("div", null,
-                                        React.createElement("strong", null, strings.TotalItemsFound),
-                                        " ",
-                                        this.state.selectedLibrary.FoundItems.length),
-                                    React.createElement(react_components_1.Tooltip, { content: strings.TooltipShowPermissions, relationship: "label" },
-                                        React.createElement(react_components_1.Button, { icon: React.createElement(react_icons_1.KeyMultiple24Regular, null), onClick: this.onShowPermissionsClick, disabled: !this.state.selectedFoundItem, appearance: "secondary", style: { marginBottom: '8px' } }, strings.ShowPermissions)),
-                                    React.createElement("div", { style: { marginTop: 8, maxHeight: '300px' } },
-                                        React.createElement(ListView_1.ListView, { items: this.state.selectedLibrary.FoundItems, viewFields: this.viewFieldsFoundItems, compact: true, selectionMode: react_1.SelectionMode.single, selection: this.onFoundItemSelectionChanged })))) : (React.createElement("div", { style: { padding: '16px', backgroundColor: '#f5f5f5', border: '1px solid #ddd', borderRadius: '4px', textAlign: 'center' } },
+                                (this.state.selectedLibrary.FoundItems && this.state.selectedLibrary.FoundItems.length > 0)
+                                    || ((this.state.selectedLibrary.FoundCheckedOutItems && this.state.selectedLibrary.FoundCheckedOutItems.length > 0)) ? (React.createElement("div", null,
+                                    this.state.selectedLibrary.FoundItems && this.state.selectedLibrary.FoundItems.length > 0 ? (React.createElement(React.Fragment, null,
+                                        React.createElement("div", null,
+                                            React.createElement("strong", null, strings.TotalItemsFound),
+                                            " ",
+                                            this.state.selectedLibrary.FoundItems.length),
+                                        React.createElement(react_components_1.Tooltip, { content: strings.TooltipShowPermissions, relationship: "label" },
+                                            React.createElement(react_components_1.Button, { icon: React.createElement(react_icons_1.KeyMultiple24Regular, null), onClick: this.onShowPermissionsClick, disabled: !this.state.selectedFoundItem, appearance: "secondary", style: { marginBottom: '8px' } }, strings.ShowPermissions)),
+                                        React.createElement("div", { style: { marginTop: 8, maxHeight: '300px' } },
+                                            React.createElement(ListView_1.ListView, { items: this.state.selectedLibrary.FoundItems, viewFields: this.viewFieldsFoundItems, compact: true, selectionMode: react_1.SelectionMode.single, selection: this.onFoundItemSelectionChanged })))) : null,
+                                    this.state.selectedLibrary.FoundCheckedOutItems && this.state.selectedLibrary.FoundCheckedOutItems.length > 0 ? (React.createElement(React.Fragment, null,
+                                        React.createElement("div", null,
+                                            React.createElement("strong", null, strings.TotalCheckedOutIemsFound),
+                                            " ",
+                                            this.state.selectedLibrary.FoundCheckedOutItems.length),
+                                        React.createElement("div", { style: { marginTop: 8, maxHeight: '300px' } },
+                                            React.createElement(ListView_1.ListView, { items: this.state.selectedLibrary.FoundCheckedOutItems, viewFields: this.viewFieldsFoundItems, compact: true, selectionMode: react_1.SelectionMode.single, selection: this.onFoundItemSelectionChanged })))) : null)) : (React.createElement("div", { style: { padding: '16px', backgroundColor: '#f5f5f5', border: '1px solid #ddd', borderRadius: '4px', textAlign: 'center' } },
                                     React.createElement("p", { style: { margin: 0, color: '#666' } }, strings.QueryLibraryForResults)))))) : (React.createElement("div", null, strings.NoLibrarySelected))),
                         React.createElement(react_components_1.DialogActions, null,
                             React.createElement(react_components_1.Tooltip, { content: strings.TooltipCloseDialog, relationship: "label" },
@@ -1148,6 +1190,7 @@ var ContentHealthManager = /** @class */ (function (_super) {
                     case 1:
                         items = _b.sent();
                         this.state.selectedLibrary.FoundItems = items;
+                        this.state.selectedLibrary.FoundItemsUnsupported = false;
                         return [3 /*break*/, 6];
                     case 2:
                         _i = 0, _a = this.state.libraryEntries;
@@ -1159,6 +1202,7 @@ var ContentHealthManager = /** @class */ (function (_super) {
                     case 4:
                         items = _b.sent();
                         listInfo.FoundItems = items;
+                        listInfo.FoundItemsUnsupported = false;
                         this.setState({
                             libraryEntries: this.state.libraryEntries
                         });
@@ -1187,10 +1231,21 @@ var ContentHealthManager = /** @class */ (function (_super) {
                     case 1:
                         if (!(_i < _a.length)) return [3 /*break*/, 4];
                         listInfo = _a[_i];
+                        // Skip lists/libraries that don't support check-out - the "Checked out" column renders
+                        // a "not supported" message for those instead.
+                        if (!this.SupportsCheckout(listInfo)) {
+                            listInfo.FoundCheckedOutItems = [];
+                            listInfo.FoundItemsUnsupported = true;
+                            this.setState({
+                                libraryEntries: this.state.libraryEntries
+                            });
+                            return [3 /*break*/, 3];
+                        }
                         return [4 /*yield*/, this.dataManager.Query4CheckedOutItems(site, listInfo.Id, listInfo.DefaultView.ServerRelativeUrl, this.state.dateStartDate)];
                     case 2:
                         items = _b.sent();
-                        listInfo.FoundItems = items;
+                        listInfo.FoundCheckedOutItems = items;
+                        listInfo.FoundItemsUnsupported = false;
                         this.setState({
                             libraryEntries: this.state.libraryEntries
                         });
@@ -1336,6 +1391,12 @@ var ContentHealthManager = /** @class */ (function (_super) {
     ContentHealthManager.prototype.GetSelectedSite = function () {
         var _this = this;
         return this.state.SelectedSites.filter(function (x) { return x.id === _this.state.selectedSiteId; })[0];
+    };
+    // Check-out is a document library feature (BaseType 1). Querying CheckoutUserId also errors
+    // out on libraries that never had check-out enabled - ForceCheckout ("Require Check Out")
+    // reliably indicates the feature is provisioned on the list, so it doubles as the gate here.
+    ContentHealthManager.prototype.SupportsCheckout = function (listInfo) {
+        return listInfo.BaseType === 1 && !!listInfo.ForceCheckout;
     };
     return ContentHealthManager;
 }(React.Component));

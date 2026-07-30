@@ -14,7 +14,7 @@ import { PageProcessing } from '../../../Core/PageProcessing';
 import { Page } from '../../../models/Page';
 import { PageResult } from '../../../models/PageResult';
 import type { LinkInfo } from '../../../models/LinkInfo';
-import { CheckmarkCircleColor, CheckmarkCircleHintRegular, FlagPrideIntersexInclusiveProgressFilled, QuestionCircleColor, WarningColor, Search24Regular, DataTrending24Regular, List24Regular, Link24Regular, Clock24Regular, LockClosed24Regular, LockOpen24Regular, ChevronDown24Regular, ChevronUp24Regular, DatabaseSearch24Regular, Open24Regular, Dismiss24Regular, KeyMultiple24Regular, Info24Regular, PeopleTeam16Regular, Person16Regular, DocumentCheckmark24Regular } from "@fluentui/react-icons";
+import { CheckmarkCircleColor, CheckmarkCircleHintRegular, FlagPrideIntersexInclusiveProgressFilled, QuestionCircleColor, WarningColor, Search24Regular, DataTrending24Regular, List24Regular, Link24Regular, Clock24Regular, LockClosed24Regular, LockOpen24Regular, ChevronDown24Regular, ChevronUp24Regular, DatabaseSearch24Regular, Open24Regular, Dismiss24Regular, KeyMultiple24Regular, Info24Regular, PeopleTeam16Regular, Person16Regular, DocumentCheckmark24Regular, Library16Regular, List16Regular } from "@fluentui/react-icons";
 import { ListInformation } from '../../../models/REST/ListInformation';
 import PermissionsManager from '../../../services/PermissionsManager';
 import { PageStatusInfo, ResolvedGroupUser, SharePointArtefact, SharePointArtefactType, SharePointGroupInfo, SharePointPermissionInfo, SharePointPrincipalPermission } from '../../../models/REST/Permissions';
@@ -132,12 +132,43 @@ export default class ContentHealthManager extends React.Component<IContentHealth
           return item.ContentType;
         return item["ContentType.Name"];
       }
+    },
+    {
+      name: 'CheckedOutBy', displayName: strings.CheckedOutLabel, sorting: true, isResizable: true,
+      render: (item: any) => {
+        if (this.state.selectedLibrary && !this.SupportsCheckout(this.state.selectedLibrary))
+          return <span>{strings.CheckoutNotSupported}</span>;
+        return <span>{item.CheckedOutBy || ''}</span>;
+      }
     }
   ];
 
   // BaseTemplate BaseType EnableAttachments EnableFolderCreation EnableVersioning ForceCheckout ItemCount LastItemModifiedDate LastItemUserModifiedDate
   viewFieldsLibs: IViewField[] = [
-    { name: 'Title', displayName: 'Title', sorting: true, isResizable: true, minWidth: 120, linkPropertyName: 'DefaultView.ServerRelativeUrl' },
+    {
+      name: 'Title', displayName: 'Title', sorting: true, isResizable: true, minWidth: 120,
+      render: (item: ListInformation) => {
+        // BaseType: 1 = Document Library, everything else (0 = Generic List, etc.) is a list.
+        const isLibrary = item.BaseType === 1;
+        const TypeIcon = isLibrary ? Library16Regular : List16Regular;
+        // ServerRelativeUrl is relative to the tenant root, not the workbench/host origin,
+        // so it's resolved against the selected site's own origin rather than used as-is.
+        // Falls back to the list settings page (always resolvable from Id) if the default
+        // view's URL wasn't returned by the lists REST call for some reason.
+        const siteUrl = this.GetSelectedSite()?.url;
+        const originMatch = siteUrl?.match(/^https?:\/\/[^/]+/);
+        const origin = originMatch ? originMatch[0] : undefined;
+        const serverRelativeUrl = item.DefaultView?.ServerRelativeUrl;
+        const href = origin
+          ? (serverRelativeUrl ? `${origin}${serverRelativeUrl}` : `${siteUrl}/_layouts/15/listedit.aspx?List=${item.Id}`)
+          : undefined;
+        return (
+          <a href={href} target={'_blank'} rel={'noreferrer'} title={isLibrary ? strings.LibraryTypeLabel : strings.ListTypeLabel}>
+            <TypeIcon className={styles.inlineIcon} />{item.Title}
+          </a>
+        );
+      }
+    },
     { name: 'ItemCount', displayName: 'Items', sorting: true, isResizable: true, minWidth: 120 },
     {
       name: 'FoundItems', displayName: strings.FoundLabel, sorting: true, isResizable: true, minWidth: 120,
@@ -183,8 +214,11 @@ export default class ContentHealthManager extends React.Component<IContentHealth
       name: 'FoundItems', displayName: strings.FoundLabel, sorting: true, isResizable: true, minWidth: 120,
       render: (item: ListInformation, index, column) => {
         const entry = this.GetLibraryEntryByIndex(item.Id);
-        if (typeof entry.FoundItems !== "undefined" && entry.FoundItems !== null) {
-          return <FieldTextRenderer text={`${strings.FoundLabel}: ${entry.FoundItems?.length}`} />;
+        if (entry.FoundItemsUnsupported) {
+          return <FieldTextRenderer text={strings.CheckoutNotSupported} />;
+        }
+        else if (typeof entry.FoundCheckedOutItems !== "undefined" && entry.FoundCheckedOutItems !== null) {
+          return <FieldTextRenderer text={`${strings.FoundLabel}: ${entry.FoundCheckedOutItems?.length}`} />;
         }
         else
           return <FieldTextRenderer text={strings.StartQueryForResults} />;
@@ -765,29 +799,46 @@ export default class ContentHealthManager extends React.Component<IContentHealth
 
                     <div style={{ marginTop: 16 }}>
                       <h4>{strings.OverviewListEntries}</h4>
-                      {this.state.selectedLibrary.FoundItems && this.state.selectedLibrary.FoundItems.length > 0 ? (
+                      {(this.state.selectedLibrary.FoundItems && this.state.selectedLibrary.FoundItems.length > 0)
+                        || ((this.state.selectedLibrary.FoundCheckedOutItems && this.state.selectedLibrary.FoundCheckedOutItems.length > 0)) ? (
                         <div>
-                          <div><strong>{strings.TotalItemsFound}</strong> {this.state.selectedLibrary.FoundItems.length}</div>
-                          <Tooltip content={strings.TooltipShowPermissions} relationship="label">
-                            <Button
-                              icon={<KeyMultiple24Regular />}
-                              onClick={this.onShowPermissionsClick}
-                              disabled={!this.state.selectedFoundItem}
-                              appearance="secondary"
-                              style={{ marginBottom: '8px' }}
-                            >
-                              {strings.ShowPermissions}
-                            </Button>
-                          </Tooltip>
-                          <div style={{ marginTop: 8, maxHeight: '300px' }}>
-                            <ListView
-                              items={this.state.selectedLibrary.FoundItems}
-                              viewFields={this.viewFieldsFoundItems}
-                              compact={true}
-                              selectionMode={SelectionMode.single}
-                              selection={this.onFoundItemSelectionChanged}
-                            />
-                          </div>
+                          {this.state.selectedLibrary.FoundItems && this.state.selectedLibrary.FoundItems.length > 0 ? (
+                            <>
+                              <div><strong>{strings.TotalItemsFound}</strong> {this.state.selectedLibrary.FoundItems.length}</div>
+                              <Tooltip content={strings.TooltipShowPermissions} relationship="label">
+                                <Button
+                                  icon={<KeyMultiple24Regular />}
+                                  onClick={this.onShowPermissionsClick}
+                                  disabled={!this.state.selectedFoundItem}
+                                  appearance="secondary"
+                                  style={{ marginBottom: '8px' }}
+                                >
+                                  {strings.ShowPermissions}
+                                </Button>
+                              </Tooltip>
+                              <div style={{ marginTop: 8, maxHeight: '300px' }}>
+                                <ListView
+                                  items={this.state.selectedLibrary.FoundItems}
+                                  viewFields={this.viewFieldsFoundItems}
+                                  compact={true}
+                                  selectionMode={SelectionMode.single}
+                                  selection={this.onFoundItemSelectionChanged}
+                                />
+                              </div>
+                            </>) : null}
+                          {this.state.selectedLibrary.FoundCheckedOutItems && this.state.selectedLibrary.FoundCheckedOutItems.length > 0 ? (
+                            <>
+                              <div><strong>{strings.TotalCheckedOutIemsFound}</strong> {this.state.selectedLibrary.FoundCheckedOutItems.length}</div>
+                              <div style={{ marginTop: 8, maxHeight: '300px' }}>
+                                <ListView
+                                  items={this.state.selectedLibrary.FoundCheckedOutItems}
+                                  viewFields={this.viewFieldsFoundItems}
+                                  compact={true}
+                                  selectionMode={SelectionMode.single}
+                                  selection={this.onFoundItemSelectionChanged}
+                                />
+                              </div>
+                            </>) : null}
                         </div>
                       ) : (
                         <div style={{ padding: '16px', backgroundColor: '#f5f5f5', border: '1px solid #ddd', borderRadius: '4px', textAlign: 'center' }}>
@@ -1267,6 +1318,7 @@ export default class ContentHealthManager extends React.Component<IContentHealth
         this.state.dateStartDate!
       );
       this.state.selectedLibrary.FoundItems = items;
+      this.state.selectedLibrary.FoundItemsUnsupported = false;
     }
     else {
       for (const listInfo of this.state.libraryEntries) {
@@ -1277,6 +1329,7 @@ export default class ContentHealthManager extends React.Component<IContentHealth
           this.state.dateStartDate!
         );
         listInfo.FoundItems = items;
+        listInfo.FoundItemsUnsupported = false;
         this.setState({
           libraryEntries: this.state.libraryEntries
         });
@@ -1290,13 +1343,24 @@ export default class ContentHealthManager extends React.Component<IContentHealth
   public async GetCheckedOutItems(): Promise<void> {
     const site: Site = this.GetSelectedSite();
     for (const listInfo of this.state.libraryEntries) {
+      // Skip lists/libraries that don't support check-out - the "Checked out" column renders
+      // a "not supported" message for those instead.
+      if (!this.SupportsCheckout(listInfo)) {
+        listInfo.FoundCheckedOutItems = [];
+        listInfo.FoundItemsUnsupported = true;
+        this.setState({
+          libraryEntries: this.state.libraryEntries
+        });
+        continue;
+      }
       const items = await this.dataManager.Query4CheckedOutItems(
         site,
         listInfo.Id,
         listInfo.DefaultView.ServerRelativeUrl,
         this.state.dateStartDate!
       );
-      listInfo.FoundItems = items;
+      listInfo.FoundCheckedOutItems = items;
+      listInfo.FoundItemsUnsupported = false;
       this.setState({
         libraryEntries: this.state.libraryEntries
       });
@@ -1429,6 +1493,13 @@ export default class ContentHealthManager extends React.Component<IContentHealth
 
   private GetSelectedSite(): Site {
     return this.state.SelectedSites.filter(x => x.id === this.state.selectedSiteId)[0] as Site;
+  }
+
+  // Check-out is a document library feature (BaseType 1). Querying CheckoutUserId also errors
+  // out on libraries that never had check-out enabled - ForceCheckout ("Require Check Out")
+  // reliably indicates the feature is provisioned on the list, so it doubles as the gate here.
+  private SupportsCheckout(listInfo: ListInformation): boolean {
+    return listInfo.BaseType === 1 && !!listInfo.ForceCheckout;
   }
 
   private onTabSelect = (event: any, data: { value: TabValue }): void => {

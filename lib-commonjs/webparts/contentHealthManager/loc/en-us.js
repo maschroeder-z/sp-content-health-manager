@@ -83,6 +83,7 @@ define([], function() {
     "EnableFolderCreationLabel": "Enable Folder Creation:",
     "OverviewListEntries": "Overview list entries",
     "TotalItemsFound": "Total items found:",
+    "TotalCheckedOutIemsFound": "Total checked-out items found:",
     "ShowPermissions": "Show Permissions",
     "QueryLibraryForResults": "Query the library for results",
     "NoLibrarySelected": "No library selected.",
@@ -123,6 +124,9 @@ define([], function() {
     "NeedsApprovalLabel": "Needs approval",
     "HasUniquePermissionLabel": "Unique permissions",
     "CheckedOutLabel": "Checked out",
-    "NotCheckedOut": "Not checked out"
+    "NotCheckedOut": "Not checked out",
+    "CheckoutNotSupported": "Not supported",
+    "LibraryTypeLabel": "Document library",
+    "ListTypeLabel": "List"
   }
 });

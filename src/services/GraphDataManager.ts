@@ -12,7 +12,7 @@ export class GraphDataManager {
 
   constructor(msGraphClientFactory: MSGraphClientFactory, spHttpClient: SPHttpClient) {
     this.graphClientPromise = msGraphClientFactory.getClient('3');
-    this.spHTTPClient = spHttpClient;    
+    this.spHTTPClient = spHttpClient;
   }
 
 
@@ -57,7 +57,7 @@ export class GraphDataManager {
   }*/
 
   // https://learn.microsoft.com/en-us/graph/api/resources/sitepage?view=graph-rest-1.0
-  public async GetPageContent(siteID: string, pageID:string): Promise<Page> {
+  public async GetPageContent(siteID: string, pageID: string): Promise<Page> {
     const client = await this.graphClientPromise;
 
     const response = await client
@@ -83,7 +83,7 @@ export class GraphDataManager {
       title: p.title,
       webUrl: p.webUrl,
       createdDateTime: p.createdDateTime,
-      lastModifiedDateTime: p.lastModifiedDateTime,      
+      lastModifiedDateTime: p.lastModifiedDateTime,
       InProgress: false
     }));
     return items;
@@ -101,10 +101,10 @@ export class GraphDataManager {
   }
 
   public async GetAllLists(siteUrl: string, incLists: boolean, incLibraries: boolean): Promise<ListInformation[]> {
-    try {      
+    try {
       // Ensure the siteUrl has proper format and add the REST API endpoint
       const apiUrl = `${siteUrl}/_api/web/lists?$expand=DefaultView`;
-      
+
       const response = await fetch(apiUrl, {
         method: 'GET',
         headers: {
@@ -119,9 +119,9 @@ export class GraphDataManager {
       }
 
       const data = await response.json();
-      
+
       // The SharePoint REST API returns data in a 'd' property with 'results' array
-      const lists = data.d?.results.filter((x:any) => (x.BaseType===0 && incLists) || (x.BaseTemplate === 101 && x.BaseType===1 && incLibraries)) || [];      
+      const lists = data.d?.results.filter((x: any) => (x.BaseType === 0 && incLists) || (x.BaseTemplate === 101 && x.BaseType === 1 && incLibraries)) || [];
       return lists.map((list: any) => ({
         AllowContentTypes: list.AllowContentTypes,
         BaseTemplate: list.BaseTemplate,
@@ -171,13 +171,13 @@ export class GraphDataManager {
         MajorWithMinorVersionsLimit: list.MajorWithMinorVersionsLimit,
         MultipleDataList: list.MultipleDataList,
         NoCrawl: list.NoCrawl,
-        ParentWebPath: list.ParentWebPath,        
+        ParentWebPath: list.ParentWebPath,
         ParserDisabled: list.ParserDisabled,
         ServerTemplateCanCreateFolders: list.ServerTemplateCanCreateFolders,
         TemplateFeatureId: list.TemplateFeatureId,
-        Title: list.Title,    
-        DefaultView: list.DefaultView,            
-        ParentWebUrl: list.ParentWebUrl+"/"+list.EntityTypeName
+        Title: list.Title,
+        DefaultView: list.DefaultView,
+        ParentWebUrl: list.ParentWebUrl + "/" + list.EntityTypeName
       }));
     } catch (error) {
       console.error('Error fetching lists:', error);
@@ -185,25 +185,44 @@ export class GraphDataManager {
     }
   }
 
+  /**
+   * Queries checked-out items using classic SharePoint REST instead of Graph.
+   * Graph's /items endpoint rejects $filter on person-field-derived names like
+   * CheckoutUserLookupId ("A provided field name is not recognized"). Classic REST also
+   * rejects $select/$expand=CheckoutUser ("field or property does not exist") - the
+   * checkout person field's navigation property is actually named CheckoutUserId (the "Id"
+   * suffix is part of the nav property name here, not just the lookup id column), and
+   * unlike File/CheckedOutByUser it filters and expands directly on the /items collection.
+   */
   public async Query4CheckedOutItems(site: Site, listID: string, defaultUrl: string, dateStart: Date): Promise<MicrosoftGraphBeta.ListItem[]> {
     defaultUrl = site.url + "/_layouts/15/listform.aspx?PageType=4&ListId=";
     try {
-      const client = await this.graphClientPromise;
-      
-      // Query for checked-out items using Microsoft Graph API
-      const response = await client
-        .api(`/sites/${encodeURIComponent(site.id)}/lists/${listID}/items`)
-        .version('v1.0')
-        .filter('fields/CheckoutUserLookupId ne null')
-        .expand('fields')
-        .select(['id', 'fields'])
-        .get();
+      // Title isn't selected here: some libraries have the Title column disabled, which
+      // makes classic REST reject $select=Title outright. FileLeafRef (the file name) is
+      // always present and is used as the display title instead, same as the original
+      // Graph-based query did.
+      const apiUrl = `${site.url}/_api/web/lists('${listID}')/items` +
+        `?$select=Id,FileLeafRef,Created,Modified,ContentTypeId,CheckoutUser/Title,CheckoutUser/EMail` +
+        `&$expand=CheckoutUser,ContentType` +
+        `&$filter=CheckoutUserId ne null`;
 
-      const items: MicrosoftGraphBeta.ListItem[] = (response?.value || []).map((item: any) => ({
-        Id: item.id,
-        Title: item.fields.FileLeafRef,      
-        ...item.fields,        
-        webUrl: `${defaultUrl}${listID}&id=${item.id}`
+      const response = await this.spHTTPClient.get(
+        apiUrl,
+        SPHttpClient.configurations.v1,
+        { headers: { 'Accept': 'application/json;odata=verbose' } }
+      );
+
+      if (!response.ok) {
+        throw new Error(`HTTP error! status: ${response.status}`);
+      }
+
+      const data = await response.json();
+      console.log("check-out items:", data);
+      const items: MicrosoftGraphBeta.ListItem[] = (data.value || []).map((item: any) => ({
+        ...item,
+        Title: item.FileLeafRef,
+        CheckedOutBy: item.CheckoutUser?.Title || null, // EMail
+        webUrl: `${defaultUrl}${listID}&id=${item.Id}`
       }));
 
       return items;
@@ -216,21 +235,21 @@ export class GraphDataManager {
   public async Query4ItemByDate(site: Site, listID: string, defaultUrl: string, dateStart: Date): Promise<MicrosoftGraphBeta.ListItem[]> {
     try {
       const client = await this.graphClientPromise;
-      
+
       // Format the date for Graph API filter (ISO format)
       const formattedDate = dateStart.toISOString();
 
-      const urlToDetails:string[] = defaultUrl.split("/");
+      const urlToDetails: string[] = defaultUrl.split("/");
       urlToDetails.pop();
-      const urlDispForm : string = urlToDetails.join("/") + "/_layouts/15/listform.aspx?PageType=4";
-      
+      const urlDispForm: string = urlToDetails.join("/") + "/_layouts/15/listform.aspx?PageType=4";
+
       // Query for items not modified after the given date using Microsoft Graph API
       const response = await client
         .api(`/sites/${encodeURIComponent(site.id)}/lists/${listID}/items`)
         .version('v1.0')
         .filter(`fields/Modified le '${formattedDate}'`)
         .expand('fields')
-        .select(['id', 'fields'])                
+        .select(['id', 'fields'])
         .get();
 
       const items: MicrosoftGraphBeta.ListItem[] = (response?.value || []).map((item: any) => ({
@@ -252,7 +271,7 @@ export class GraphDataManager {
 
   public async GetPermission4Item(site: Site, listID: string, listItemID: string): Promise<MicrosoftGraphBeta.Permission[]> {
     try {
-      const client = await this.graphClientPromise;      
+      const client = await this.graphClientPromise;
       // Query for permission information using Microsoft Graph API
       const response = await client
         .api(`/sites/${encodeURIComponent(site.id)}/lists/${listID}/items/${listItemID}/permissions`)
@@ -271,8 +290,7 @@ export class GraphDataManager {
  * Endpoint: /[siteUrl]/_api/web/lists('[listID]')/GetItems(query=@v1)?@v1={'ViewXml':'<View><Query><Where><Leq><FieldRef Name=Modified/><Value Type=DateTime>[dateStart]</Value></Leq></Where></Query></View>'}&$expand=file
  */
   public async Query4ItemByDateClassic(siteUrl: string, listID: string, defaultUrl: string, dateStart: Date): Promise<MicrosoftGraphBeta.ListItem[]> {
-    if (typeof defaultUrl !== "undefined")
-    {
+    if (typeof defaultUrl !== "undefined") {
       try {
         // Format the date for SharePoint CAML query (ISO format)
         const formattedDate = dateStart.toISOString();
@@ -287,12 +305,12 @@ export class GraphDataManager {
 
         // Construct the ViewXml query
         const viewXml = `<View><Query><Where><Leq><FieldRef Name=Modified/><Value Type=DateTime>${formattedDate}</Value></Leq></Where></Query></View>`;
-        
+
         const options: ISPHttpClientOptions = {
           headers: {
-            'odata-version':'3.0',
+            'odata-version': '3.0',
             'Accept': 'application/json;odata=verbose',
-            'Content-Type': 'application/json'          
+            'Content-Type': 'application/json'
           },
           body: `{'query': {          
             'ViewXml':'${viewXml}'
@@ -302,11 +320,11 @@ export class GraphDataManager {
         // Encode the query parameter
         //const queryParam = encodeURIComponent(`{'ViewXml':'${viewXml}'}`);
         //const queryParam = `{'ViewXml':'${viewXml}'}`;
-        
+
         // Construct the API URL
         //const apiUrl = `${siteUrl}/_api/web/lists('${listID}')/GetItems(query=@v1)?@v1=${queryParam}&$expand=file`;
         const apiUrl = `${siteUrl}/_api/web/lists('${listID}')/GetItems?$expand=ParentList,File,ContentType`;
-        
+
         const response = await this.spHTTPClient.post(
           apiUrl,
           SPHttpClient.configurations.v1,
@@ -318,17 +336,17 @@ export class GraphDataManager {
         }
 
         const data = await response.json();
-        
+
         // The SharePoint REST API returns data in a 'd' property with 'results' array
-        const items : MicrosoftGraphBeta.ListItem[] = data.d?.results || [];  
-        items.forEach((item : MicrosoftGraphBeta.ListItem)=> {
+        const items: MicrosoftGraphBeta.ListItem[] = data.d?.results || [];
+        items.forEach((item: MicrosoftGraphBeta.ListItem) => {
           // https://[Your SharePoint SiteURL]/_layouts/15/listform.aspx?PageType=[Type]&ListId=[ListGUID]&ID=[Item ID]
           //console.log(item);          
           item.webUrl = `${defaultUrl}${(item as any).ParentList.Id}&id=${(item as any).Id}`;
           //item.webUrl = `/_layouts/15/listform.aspx?PageType=4&ListId=${(item as any).GUID}`
-        });                
+        });
         return items;
-        
+
       } catch (error) {
         console.error('Error querying items by date:', error);
         throw error;

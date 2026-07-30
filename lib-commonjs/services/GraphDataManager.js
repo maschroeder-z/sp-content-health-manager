@@ -209,9 +209,18 @@ var GraphDataManager = /** @class */ (function () {
             });
         });
     };
+    /**
+     * Queries checked-out items using classic SharePoint REST instead of Graph.
+     * Graph's /items endpoint rejects $filter on person-field-derived names like
+     * CheckoutUserLookupId ("A provided field name is not recognized"). Classic REST also
+     * rejects $select/$expand=CheckoutUser ("field or property does not exist") - the
+     * checkout person field's navigation property is actually named CheckoutUserId (the "Id"
+     * suffix is part of the nav property name here, not just the lookup id column), and
+     * unlike File/CheckedOutByUser it filters and expands directly on the /items collection.
+     */
     GraphDataManager.prototype.Query4CheckedOutItems = function (site, listID, defaultUrl, dateStart) {
         return tslib_1.__awaiter(this, void 0, void 0, function () {
-            var client, response, items, error_2;
+            var apiUrl, response, data, items, error_2;
             return tslib_1.__generator(this, function (_a) {
                 switch (_a.label) {
                     case 0:
@@ -219,19 +228,24 @@ var GraphDataManager = /** @class */ (function () {
                         _a.label = 1;
                     case 1:
                         _a.trys.push([1, 4, , 5]);
-                        return [4 /*yield*/, this.graphClientPromise];
+                        apiUrl = "".concat(site.url, "/_api/web/lists('").concat(listID, "')/items") +
+                            "?$select=Id,FileLeafRef,Created,Modified,ContentTypeId,CheckoutUser/Title,CheckoutUser/EMail" +
+                            "&$expand=CheckoutUser,ContentType" +
+                            "&$filter=CheckoutUserId ne null";
+                        return [4 /*yield*/, this.spHTTPClient.get(apiUrl, sp_http_1.SPHttpClient.configurations.v1, { headers: { 'Accept': 'application/json;odata=verbose' } })];
                     case 2:
-                        client = _a.sent();
-                        return [4 /*yield*/, client
-                                .api("/sites/".concat(encodeURIComponent(site.id), "/lists/").concat(listID, "/items"))
-                                .version('v1.0')
-                                .filter('fields/CheckoutUserLookupId ne null')
-                                .expand('fields')
-                                .select(['id', 'fields'])
-                                .get()];
-                    case 3:
                         response = _a.sent();
-                        items = ((response === null || response === void 0 ? void 0 : response.value) || []).map(function (item) { return (tslib_1.__assign(tslib_1.__assign({ Id: item.id, Title: item.fields.FileLeafRef }, item.fields), { webUrl: "".concat(defaultUrl).concat(listID, "&id=").concat(item.id) })); });
+                        if (!response.ok) {
+                            throw new Error("HTTP error! status: ".concat(response.status));
+                        }
+                        return [4 /*yield*/, response.json()];
+                    case 3:
+                        data = _a.sent();
+                        console.log("check-out items:", data);
+                        items = (data.value || []).map(function (item) {
+                            var _a;
+                            return (tslib_1.__assign(tslib_1.__assign({}, item), { Title: item.FileLeafRef, CheckedOutBy: ((_a = item.CheckoutUser) === null || _a === void 0 ? void 0 : _a.Title) || null, webUrl: "".concat(defaultUrl).concat(listID, "&id=").concat(item.Id) }));
+                        });
                         return [2 /*return*/, items];
                     case 4:
                         error_2 = _a.sent();

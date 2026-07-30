@@ -28,7 +28,13 @@
         "default": "Content Health Manager helps SharePoint site owners, content managers, and IT administrators keep modern SharePoint sites clean, secure, and search-ready. Select one or more site collections to get a consolidated view of their pages and document libraries: scan pages for broken links, see which pages have unpublished draft changes awaiting approval, identify pages and libraries with unique (non-inherited) permissions, see which files and pages are checked out and by whom, and look up a specific user's or group's effective permissions on any page or library. For document libraries, find items that haven't changed since a given date and review currently checked-out items. The add-in reads data through the SharePoint REST API and Microsoft Graph using the signed-in user's own permissions - it does not modify site content or permissions. Requires SharePoint Online and at least Read access to the sites being reviewed; viewing detailed role assignments on a site requires Manage Permissions rights there.",
         "de-DE": "Content Health Manager hilft SharePoint-Seitenbesitzern, Content-Verantwortlichen und IT-Administratoren dabei, moderne SharePoint-Websites sauber, sicher und suchbereit zu halten. Wählen Sie eine oder mehrere Websitesammlungen aus, um eine konsolidierte Übersicht über deren Seiten und Dokumentbibliotheken zu erhalten: Seiten auf defekte Links prüfen, erkennen, welche Seiten unveröffentlichte Entwurfsänderungen haben, die auf eine Genehmigung warten, Seiten und Bibliotheken mit eindeutigen (nicht geerbten) Berechtigungen identifizieren, sehen, welche Dateien und Seiten ausgecheckt sind und von wem, sowie die effektiven Berechtigungen eines bestimmten Benutzers oder einer Gruppe für eine beliebige Seite oder Bibliothek nachschlagen. Für Dokumentbibliotheken lassen sich Elemente finden, die seit einem bestimmten Datum nicht geändert wurden, sowie aktuell ausgecheckte Elemente einsehen. Die App liest Daten über die SharePoint-REST-API und Microsoft Graph mit den Berechtigungen des angemeldeten Benutzers - sie ändert weder Inhalte noch Berechtigungen. Erfordert SharePoint Online und mindestens Lesezugriff auf die überprüften Websites; zum Anzeigen detaillierter Rollenzuweisungen auf einer Website sind dort Berechtigungen zum Verwalten von Berechtigungen erforderlich."
       },
-      "screenshotPaths": [],
+      "screenshotPaths": [
+        "assets/screenshots/app-screen-1.png",
+        "assets/screenshots/app-screen-2.png",
+        "assets/screenshots/app-screen-3.png",
+        "assets/screenshots/app-screen-4.png",
+        "assets/screenshots/app-screen-5.png"
+      ],      
       "videoUrl": "",
       "categories": [
         "Content management",

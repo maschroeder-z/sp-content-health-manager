@@ -90,6 +90,7 @@ declare interface IContentHealthManagerWebPartStrings {
   EnableFolderCreationLabel: string;
   OverviewListEntries: string;
   TotalItemsFound: string;
+  TotalCheckedOutIemsFound: string;
   ShowPermissions: string;
   QueryLibraryForResults: string;
   NoLibrarySelected: string;
@@ -134,6 +135,9 @@ declare interface IContentHealthManagerWebPartStrings {
   HasUniquePermissionLabel: string;
   CheckedOutLabel: string;
   NotCheckedOut: string;
+  CheckoutNotSupported: string;
+  LibraryTypeLabel: string;
+  ListTypeLabel: string;
 }
 
 declare module 'ContentHealthManagerWebPartStrings' {

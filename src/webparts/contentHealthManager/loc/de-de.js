@@ -1,4 +1,4 @@
-define([], function() {
+define([], function () {
   return {
     "PropertyPaneDescription": "Beschreibung",
     "BasicGroupName": "Gruppenname",
@@ -83,6 +83,7 @@ define([], function() {
     "EnableFolderCreationLabel": "Ordnererstellung aktivieren:",
     "OverviewListEntries": "Übersicht Listeneinträge",
     "TotalItemsFound": "Gesamt gefundene Elemente:",
+    "TotalCheckedOutIemsFound": "Gesamt gefundene ausgecheckte Elemente:",
     "ShowPermissions": "Berechtigungen anzeigen",
     "QueryLibraryForResults": "Bibliothek für Ergebnisse abfragen",
     "NoLibrarySelected": "Keine Bibliothek ausgewählt.",
@@ -123,7 +124,10 @@ define([], function() {
     "NeedsApprovalLabel": "Genehmigung erforderlich",
     "HasUniquePermissionLabel": "Eindeutige Berechtigungen",
     "CheckedOutLabel": "Ausgecheckt",
-    "NotCheckedOut": "Nicht ausgecheckt"
+    "NotCheckedOut": "Nicht ausgecheckt",
+    "CheckoutNotSupported": "Nicht unterstützt",
+    "LibraryTypeLabel": "Dokumentbibliothek",
+    "ListTypeLabel": "Liste"
   }
 });
 
