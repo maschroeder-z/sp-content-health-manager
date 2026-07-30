@@ -1318,7 +1318,7 @@ export default class ContentHealthManager extends React.Component<IContentHealth
         this.state.dateStartDate!
       );
       this.state.selectedLibrary.FoundItems = items;
-      this.state.selectedLibrary.FoundItemsUnsupported = false;
+      //this.state.selectedLibrary.FoundItemsUnsupported = false;
     }
     else {
       for (const listInfo of this.state.libraryEntries) {
@@ -1329,7 +1329,7 @@ export default class ContentHealthManager extends React.Component<IContentHealth
           this.state.dateStartDate!
         );
         listInfo.FoundItems = items;
-        listInfo.FoundItemsUnsupported = false;
+        //listInfo.FoundItemsUnsupported = false;
         this.setState({
           libraryEntries: this.state.libraryEntries
         });
@@ -1372,13 +1372,42 @@ export default class ContentHealthManager extends React.Component<IContentHealth
   }
 
   public async GetPermission4SelectedItem(site: Site, listID: string, listItemID: string): Promise<void> {
+    // Mirrors ShowPagePermissions' state contract (isPagePermissionsOpen + pagePermissions +
+    // permissionGroupTree) so the found item reuses the same "Page permissions" dialog instead
+    // of only logging to the console.
+    const item = this.state.selectedFoundItem;
+    this.setState({
+      isPagePermissionsOpen: true,
+      isLoadingPagePermissions: true,
+      pagePermissions: [],
+      pagePermissionsError: null,
+      permissionGroupTree: [],
+      openTreeNodeKeys: new Set<string>(),
+      selectedTreeNodeKey: 'root',
+      groupMemberCache: new Map<string, ResolvedGroupUser[]>(),
+      groupMembersError: null,
+      currentArtefact: null,
+      permissionsSubjectTitle: item?.Title || item?.FileLeafRef || '',
+      permissionsSubjectUrl: item?.webUrl || null,
+      isCheckingPrincipalAccess: false,
+      principalAccessResult: null,
+      principalAccessError: null
+    });
     try {
-      const permissions = await this.dataManager.GetPermission4Item(site, listID, listItemID);
-      console.log('Item permissions:', permissions);
-      // You can add additional logic here to handle the permissions data
-      // For example, display them in a dialog or update the UI state
+      const artefact: SharePointArtefact = {
+        type: SharePointArtefactType.ListItem,
+        webUrl: site.url,
+        listId: listID,
+        itemId: Number(listItemID)
+      };
+      const permissions = await this.permissionsManager.get4ArtefactPermissions(artefact);
+      const groupTree = permissions.filter(p => p.isGroup).map(p => this.buildGroupNode(p, artefact.webUrl));
+      this.setState({ pagePermissions: permissions, permissionGroupTree: groupTree, currentArtefact: artefact });
     } catch (error) {
       console.error('Error retrieving item permissions:', error);
+      this.setState({ pagePermissionsError: error instanceof Error ? error.message : String(error) });
+    } finally {
+      this.setState({ isLoadingPagePermissions: false });
     }
   }
 

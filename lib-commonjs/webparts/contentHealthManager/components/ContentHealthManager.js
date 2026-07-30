@@ -1190,7 +1190,6 @@ var ContentHealthManager = /** @class */ (function (_super) {
                     case 1:
                         items = _b.sent();
                         this.state.selectedLibrary.FoundItems = items;
-                        this.state.selectedLibrary.FoundItemsUnsupported = false;
                         return [3 /*break*/, 6];
                     case 2:
                         _i = 0, _a = this.state.libraryEntries;
@@ -1202,7 +1201,7 @@ var ContentHealthManager = /** @class */ (function (_super) {
                     case 4:
                         items = _b.sent();
                         listInfo.FoundItems = items;
-                        listInfo.FoundItemsUnsupported = false;
+                        //listInfo.FoundItemsUnsupported = false;
                         this.setState({
                             libraryEntries: this.state.libraryEntries
                         });
@@ -1272,21 +1271,53 @@ var ContentHealthManager = /** @class */ (function (_super) {
     };
     ContentHealthManager.prototype.GetPermission4SelectedItem = function (site, listID, listItemID) {
         return tslib_1.__awaiter(this, void 0, void 0, function () {
-            var permissions, error_8;
+            var item, artefact_2, permissions, groupTree, error_8;
+            var _this = this;
             return tslib_1.__generator(this, function (_a) {
                 switch (_a.label) {
                     case 0:
-                        _a.trys.push([0, 2, , 3]);
-                        return [4 /*yield*/, this.dataManager.GetPermission4Item(site, listID, listItemID)];
+                        item = this.state.selectedFoundItem;
+                        this.setState({
+                            isPagePermissionsOpen: true,
+                            isLoadingPagePermissions: true,
+                            pagePermissions: [],
+                            pagePermissionsError: null,
+                            permissionGroupTree: [],
+                            openTreeNodeKeys: new Set(),
+                            selectedTreeNodeKey: 'root',
+                            groupMemberCache: new Map(),
+                            groupMembersError: null,
+                            currentArtefact: null,
+                            permissionsSubjectTitle: (item === null || item === void 0 ? void 0 : item.Title) || (item === null || item === void 0 ? void 0 : item.FileLeafRef) || '',
+                            permissionsSubjectUrl: (item === null || item === void 0 ? void 0 : item.webUrl) || null,
+                            isCheckingPrincipalAccess: false,
+                            principalAccessResult: null,
+                            principalAccessError: null
+                        });
+                        _a.label = 1;
                     case 1:
-                        permissions = _a.sent();
-                        console.log('Item permissions:', permissions);
-                        return [3 /*break*/, 3];
+                        _a.trys.push([1, 3, 4, 5]);
+                        artefact_2 = {
+                            type: Permissions_1.SharePointArtefactType.ListItem,
+                            webUrl: site.url,
+                            listId: listID,
+                            itemId: Number(listItemID)
+                        };
+                        return [4 /*yield*/, this.permissionsManager.get4ArtefactPermissions(artefact_2)];
                     case 2:
+                        permissions = _a.sent();
+                        groupTree = permissions.filter(function (p) { return p.isGroup; }).map(function (p) { return _this.buildGroupNode(p, artefact_2.webUrl); });
+                        this.setState({ pagePermissions: permissions, permissionGroupTree: groupTree, currentArtefact: artefact_2 });
+                        return [3 /*break*/, 5];
+                    case 3:
                         error_8 = _a.sent();
                         console.error('Error retrieving item permissions:', error_8);
-                        return [3 /*break*/, 3];
-                    case 3: return [2 /*return*/];
+                        this.setState({ pagePermissionsError: error_8 instanceof Error ? error_8.message : String(error_8) });
+                        return [3 /*break*/, 5];
+                    case 4:
+                        this.setState({ isLoadingPagePermissions: false });
+                        return [7 /*endfinally*/];
+                    case 5: return [2 /*return*/];
                 }
             });
         });
