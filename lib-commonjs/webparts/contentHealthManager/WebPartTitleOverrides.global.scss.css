@@ -1,0 +1,52 @@
+/**
+ * @pnp/spfx-controls-react ships WebPartTitle.module.css with class names that are
+ * already hashed by the package's own build (e.g. "webPartHeader_9ac39aeb"). Heft's
+ * sass plugin treats any *.css/*.scss file as a CSS Module unless it is named
+ * "*.global.*", so it re-hashes those already-hashed class names again on top
+ * (e.g. "webPartHeader_9ac39aeb_93343b14"). The re-hashed selectors no longer match
+ * the class names the component actually renders, so none of the vendor styling
+ * applies and the title falls back to an unstyled <textarea>.
+ *
+ * This file is named "*.global.scss" so Heft emits it as plain, unhashed CSS,
+ * re-declaring the same rules PnP ships so they target the class names actually
+ * rendered by WebPartTitle.
+ */
+.webPartHeader_9ac39aeb {
+  align-items: baseline;
+  display: flex;
+}
+
+.webPartTitle_9ac39aeb {
+  flex-grow: 1;
+  font-size: 20px;
+  font-weight: 600;
+  margin-bottom: 11px;
+  overflow-x: hidden;
+  text-overflow: ellipsis;
+}
+.webPartTitle_9ac39aeb textarea {
+  background-color: transparent;
+  border: none;
+  box-sizing: border-box;
+  color: inherit;
+  display: block;
+  font-family: inherit;
+  font-size: inherit;
+  font-weight: 400;
+  height: 40px;
+  line-height: inherit;
+  margin: 0;
+  outline: 0;
+  overflow: hidden;
+  resize: none;
+  text-align: inherit;
+  white-space: pre;
+  width: 100%;
+}
+.webPartTitle_9ac39aeb textarea::placeholder {
+  color: #605e5c;
+}
+
+.moreLink_9ac39aeb {
+  margin-bottom: 11px;
+}

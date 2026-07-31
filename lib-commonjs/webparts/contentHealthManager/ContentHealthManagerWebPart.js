@@ -10,6 +10,8 @@ var sp_webpart_base_1 = require("@microsoft/sp-webpart-base");
 var strings = tslib_1.__importStar(require("ContentHealthManagerWebPartStrings"));
 var ContentHealthManager_1 = tslib_1.__importDefault(require("./components/ContentHealthManager"));
 var react_components_1 = require("@fluentui/react-components");
+var WebPartTitle_1 = require("@pnp/spfx-controls-react/lib/WebPartTitle");
+require("./WebPartTitleOverrides.global.scss");
 var AppMode;
 (function (AppMode) {
     AppMode[AppMode["SharePoint"] = 0] = "SharePoint";
@@ -32,6 +34,7 @@ var ContentHealthManagerWebPart = /** @class */ (function (_super) {
         return _this;
     }
     ContentHealthManagerWebPart.prototype.render = function () {
+        var _this = this;
         var element = React.createElement(ContentHealthManager_1.default, {
             description: this.properties.description,
             isDarkTheme: this._isDarkTheme,
@@ -42,9 +45,16 @@ var ContentHealthManagerWebPart = /** @class */ (function (_super) {
             wpContext: this.context,
             spHTTPClient: this.context.spHttpClient
         });
+        var titleElement = React.createElement(WebPartTitle_1.WebPartTitle, {
+            displayMode: this.displayMode,
+            title: this.properties.title || strings.ContentHealthManagerTitle,
+            updateProperty: function (value) {
+                _this.properties.title = value;
+            }
+        });
         var fluentElement = React.createElement(react_components_1.FluentProvider, {
-            theme: react_components_1.teamsLightTheme
-        }, element);
+            theme: this._isDarkTheme ? react_components_1.teamsDarkTheme : react_components_1.teamsLightTheme
+        }, titleElement, element);
         var temp = React.createElement(react_components_1.IdPrefixProvider, { value: "msz" }, fluentElement);
         ReactDom.render(temp, this.domElement);
     };

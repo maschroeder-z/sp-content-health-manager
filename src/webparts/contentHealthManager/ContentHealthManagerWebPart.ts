@@ -11,10 +11,13 @@ import { IReadonlyTheme } from '@microsoft/sp-component-base';
 import * as strings from 'ContentHealthManagerWebPartStrings';
 import ContentHealthManager from './components/ContentHealthManager';
 import { IContentHealthManagerProps } from './components/IContentHealthManagerProps';
-import { FluentProvider, FluentProviderProps, IdPrefixProvider, teamsLightTheme } from '@fluentui/react-components';
+import { FluentProvider, FluentProviderProps, IdPrefixProvider, teamsLightTheme, teamsDarkTheme } from '@fluentui/react-components';
+import { WebPartTitle } from '@pnp/spfx-controls-react/lib/WebPartTitle';
+import './WebPartTitleOverrides.global.scss';
 
 export interface IContentHealthManagerWebPartProps {
   description: string;
+  title: string;
 }
 
 export enum AppMode {
@@ -42,12 +45,21 @@ export default class ContentHealthManagerWebPart extends BaseClientSideWebPart<I
     });
 
 
+    const titleElement: React.ReactElement = React.createElement(WebPartTitle, {
+      displayMode: this.displayMode,
+      title: this.properties.title || strings.ContentHealthManagerTitle,
+      updateProperty: (value: string) => {
+        this.properties.title = value;
+      }
+    });
+
     const fluentElement: React.ReactElement<FluentProviderProps> = React.createElement(
       FluentProvider,
       {
-        theme: teamsLightTheme
+        theme: this._isDarkTheme ? teamsDarkTheme : teamsLightTheme
       },
-      element    
+      titleElement,
+      element
     );
 
     const temp: React.ReactElement = React.createElement(IdPrefixProvider,{value:"msz"},fluentElement);
@@ -115,7 +127,6 @@ export default class ContentHealthManagerWebPart extends BaseClientSideWebPart<I
       this.domElement.style.setProperty('--neutralLight', palette.neutralLight || null);
       this.domElement.style.setProperty('--neutralSecondary', palette.neutralSecondary || null);
     }
-
   }
 
   protected onDispose(): void {

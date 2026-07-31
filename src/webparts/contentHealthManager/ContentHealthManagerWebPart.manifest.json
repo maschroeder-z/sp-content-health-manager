@@ -31,8 +31,10 @@
         "de-DE": "Prüft die Seiten und Bibliotheken Ihrer SharePoint-Website auf defekte Links, eindeutige Berechtigungen, Gesamtberechtigungen, ausgecheckte Dateien und Seiten, die auf Genehmigung warten."
       },
       "officeFabricIconFontName": "Page",
+      "fullPageAppIconImageUrl": "https://www.dev-sky.net/assets/content-health-manager-fullpage-icon.png",
       "properties": {
-        "description": "ContentHealthManager"
+        "description": "ContentHealthManager",
+        "title": "Centralized Content Health Manager"
       }
     }
   ]

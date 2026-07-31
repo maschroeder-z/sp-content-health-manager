@@ -29,12 +29,12 @@
         "de-DE": "Content Health Manager hilft SharePoint-Seitenbesitzern, Content-Verantwortlichen und IT-Administratoren dabei, moderne SharePoint-Websites sauber, sicher und suchbereit zu halten. Wählen Sie eine oder mehrere Websitesammlungen aus, um eine konsolidierte Übersicht über deren Seiten und Dokumentbibliotheken zu erhalten: Seiten auf defekte Links prüfen, erkennen, welche Seiten unveröffentlichte Entwurfsänderungen haben, die auf eine Genehmigung warten, Seiten und Bibliotheken mit eindeutigen (nicht geerbten) Berechtigungen identifizieren, sehen, welche Dateien und Seiten ausgecheckt sind und von wem, sowie die effektiven Berechtigungen eines bestimmten Benutzers oder einer Gruppe für eine beliebige Seite oder Bibliothek nachschlagen. Für Dokumentbibliotheken lassen sich Elemente finden, die seit einem bestimmten Datum nicht geändert wurden, sowie aktuell ausgecheckte Elemente einsehen. Die App liest Daten über die SharePoint-REST-API und Microsoft Graph mit den Berechtigungen des angemeldeten Benutzers - sie ändert weder Inhalte noch Berechtigungen. Erfordert SharePoint Online und mindestens Lesezugriff auf die überprüften Websites; zum Anzeigen detaillierter Rollenzuweisungen auf einer Website sind dort Berechtigungen zum Verwalten von Berechtigungen erforderlich."
       },
       "screenshotPaths": [
-        "assets/screenshots/app-screen-1.png",
-        "assets/screenshots/app-screen-2.png",
-        "assets/screenshots/app-screen-3.png",
-        "assets/screenshots/app-screen-4.png",
-        "assets/screenshots/app-screen-5.png"
-      ],      
+        "assets/screenshots/EN/app-screen-1.png",
+        "assets/screenshots/EN/app-screen-2.png",
+        "assets/screenshots/EN/app-screen-3.png",
+        "assets/screenshots/EN/app-screen-4.png",
+        "assets/screenshots/EN/app-screen-5.png"
+      ],
       "videoUrl": "",
       "categories": [
         "Content management",
