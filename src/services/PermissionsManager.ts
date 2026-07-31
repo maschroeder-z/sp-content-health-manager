@@ -14,6 +14,13 @@ import {
   SharePointPrincipalPermission
 } from '../models/REST/Permissions';
 
+/**
+ * Marks an error as an expected, already-explained condition (e.g. an Entra claim that turned
+ * out to be a directory role rather than a group) so callers can log it quietly instead of as a
+ * console.error - the message is already user-facing and actionable, not a bug to investigate.
+ */
+export class ExpectedPermissionResolutionError extends Error { }
+
 export class PermissionsManager {
   private readonly spHttpClient: SPHttpClient;
   private readonly graphClientPromise: Promise<MSGraphClientV3>;
@@ -47,11 +54,15 @@ export class PermissionsManager {
         const roles: any[] = roleAssignment.RoleDefinitionBindings?.results || [];
         const principalType: PrincipalType = member.PrincipalType;
 
+        if (!member.LoginName && !member.Title) {
+          console.warn('get4ArtefactPermissions: a role assignment\'s Member came back empty - the $expand=Member may have partially failed for this principal.', roleAssignment);
+        }
+
         return {
           principalId: member.Id,
           principalType,
           isGroup: principalType !== PrincipalType.User,
-          displayName: member.Title,
+          displayName: member.Title || member.LoginName || '(unresolved principal)',
           loginName: member.LoginName,
           email: member.Email || undefined,
           roles: roles.map((role: any) => role.Name)
@@ -307,7 +318,11 @@ export class PermissionsManager {
 
       throw new Error(`Unsupported group principal (not a SharePoint group or Entra-backed security group): ${groupInfo.loginName || groupInfo.displayName}`);
     } catch (error) {
-      console.error('Error resolving group users:', error);
+      if (error instanceof ExpectedPermissionResolutionError) {
+        console.warn('Could not resolve group users:', error.message);
+      } else {
+        console.error('Error resolving group users:', error);
+      }
       throw error;
     }
   }
@@ -333,9 +348,62 @@ export class PermissionsManager {
 
       throw new Error(`Unsupported group principal (not a SharePoint group or Entra-backed security group): ${groupInfo.loginName || groupInfo.displayName}`);
     } catch (error) {
-      console.error('Error resolving nested groups:', error);
+      if (error instanceof ExpectedPermissionResolutionError) {
+        console.warn('Could not resolve nested groups:', error.message);
+      } else {
+        console.error('Error resolving nested groups:', error);
+      }
       throw error;
     }
+  }
+
+  /**
+   * Resolves the members of a built-in Entra directory role (e.g. Global Administrator), given its
+   * universal role template id (see models/REST/Permissions.ts SHAREPOINT_RELEVANT_ENTRA_ROLES).
+   * Unlike security groups, directory roles are addressed via /directoryRoles, not /groups - a role
+   * that has never been assigned to anyone in this tenant may not be "activated" yet and this call
+   * will 404 for it (activating one requires the write-scoped RoleManagement.ReadWrite.Directory
+   * permission, out of scope for a read-only permissions audit tool). Requires the
+   * RoleManagement.Read.Directory Graph permission, requested in config/package-solution.json and
+   * subject to tenant admin approval - until approved this throws a 403 GraphError.
+   */
+  public async resolveDirectoryRoleUsers(roleTemplateId: string): Promise<ResolvedGroupUser[]> {
+    try {
+      const client = await this.graphClientPromise;
+
+      const role = await client
+        .api(`/directoryRoles(roleTemplateId='${encodeURIComponent(roleTemplateId)}')`)
+        .version('v1.0')
+        .select('id')
+        .get();
+
+      return await this.fetchDirectoryRoleMembersByRoleId(client, role.id);
+    } catch (error) {
+      console.error('Error resolving directory role members:', error);
+      throw error;
+    }
+  }
+
+  /**
+   * Fetches the members of an already-activated directory role, given its own (tenant-specific)
+   * object id - not a roleTemplateId. Shared by resolveDirectoryRoleUsers (which resolves a
+   * universal roleTemplateId to this id first) and resolveEntraGroupUsers's directory-role
+   * fallback (which already has what's presumably this id, extracted directly from a SharePoint
+   * claim, so it skips the roleTemplateId resolution step entirely).
+   */
+  private async fetchDirectoryRoleMembersByRoleId(client: MSGraphClientV3, roleId: string): Promise<ResolvedGroupUser[]> {
+    const response = await client
+      .api(`/directoryRoles/${encodeURIComponent(roleId)}/members`)
+      .version('v1.0')
+      .select(['id', 'displayName', 'mail', 'userPrincipalName'].join(','))
+      .get();
+
+    const members: any[] = response?.value || [];
+    return members.map((member: any) => ({
+      id: member.id,
+      displayName: member.displayName,
+      email: member.mail || member.userPrincipalName || undefined
+    }));
   }
 
   private async resolveSharePointGroupUsers(webUrl: string, groupId: number): Promise<ResolvedGroupUser[]> {
@@ -345,7 +413,7 @@ export class PermissionsManager {
       .filter((member: any) => !this.tryExtractEntraGroupId(member.LoginName))
       .map((member: any) => ({
         id: String(member.Id),
-        displayName: member.Title,
+        displayName: member.Title || member.LoginName || '(unresolved principal)',
         email: member.Email || undefined,
         loginName: member.LoginName
       }));
@@ -372,44 +440,145 @@ export class PermissionsManager {
       }));
   }
 
+  /**
+   * SharePoint REST collections default to a ~100-item page unless $top is specified, and this
+   * endpoint doesn't automatically follow up - without pagination, groups larger than that would
+   * silently lose members past the first page. $top=5000 matches SharePoint's own hard collection
+   * cap, and d.__next (odata=verbose) is followed in case a tenant enforces a smaller page size.
+   */
   private async fetchSharePointGroupMembers(webUrl: string, groupId: number): Promise<any[]> {
-    const response = await this.spHttpClient.get(
-      `${this.normalizeWebUrl(webUrl)}/_api/web/sitegroups/getbyid(${groupId})/users`,
-      SPHttpClient.configurations.v1,
-      { headers: { 'Accept': 'application/json;odata=verbose' } }
-    );
+    const members: any[] = [];
+    let nextUrl: string | undefined =
+      `${this.normalizeWebUrl(webUrl)}/_api/web/sitegroups/getbyid(${groupId})/users?$top=5000`;
 
-    if (!response.ok) {
-      throw new Error(`HTTP error! status: ${response.status}`);
+    while (nextUrl) {
+      const response = await this.spHttpClient.get(
+        nextUrl,
+        SPHttpClient.configurations.v1,
+        { headers: { 'Accept': 'application/json;odata=verbose' } }
+      );
+
+      if (!response.ok) {
+        throw new Error(`HTTP error! status: ${response.status}`);
+      }
+
+      const data = await response.json();
+      members.push(...this.unwrapCollection(data));
+      nextUrl = data?.d?.__next || undefined;
     }
 
-    const data = await response.json();
-    return this.unwrapCollection(data);
+    const missingDetails = members.filter((member: any) => !member.LoginName || !member.Title);
+    if (missingDetails.length > 0) {
+      console.warn(`fetchSharePointGroupMembers: ${missingDetails.length} member(s) of group ${groupId} came back with a missing LoginName/Title - the REST expand may have partially failed for these principals.`, missingDetails);
+    }
+
+    return members;
   }
 
   private async resolveEntraGroupUsers(groupId: string): Promise<ResolvedGroupUser[]> {
     const client = await this.graphClientPromise;
 
-    const response = await client
-      .api(`/groups/${encodeURIComponent(groupId)}/transitiveMembers/microsoft.graph.user`)
-      .version('v1.0')
-      .select(['id', 'displayName', 'mail', 'userPrincipalName'].join(','))
-      .get();
+    try {
+      const response = await client
+        .api(`/groups/${encodeURIComponent(groupId)}/transitiveMembers/microsoft.graph.user`)
+        .version('v1.0')
+        .select(['id', 'displayName', 'mail', 'userPrincipalName'].join(','))
+        .get();
 
-    const members: any[] = response?.value || [];
-    return members.map((member: any) => ({
-      id: member.id,
-      displayName: member.displayName,
-      email: member.mail || member.userPrincipalName || undefined
-    }));
+      const members: any[] = response?.value || [];
+      return members.map((member: any) => ({
+        id: member.id,
+        displayName: member.displayName,
+        email: member.mail || member.userPrincipalName || undefined
+      }));
+    } catch (error: any) {
+      if (error?.statusCode === 404) {
+        try {
+          return await this.fetchDirectoryRoleMembersByRoleId(client, groupId);
+        } catch (roleError: any) {
+          if (roleError?.statusCode === 403) {
+            throw new ExpectedPermissionResolutionError(
+              `This Entra ID object (${groupId}) appears to be a built-in directory role, but your tenant admin has not approved this app's RoleManagement.Read.Directory permission request yet - approve it in the SharePoint Admin Center's API access page to list its members.`
+            );
+          }
+          // Not resolvable as a directory role either - fall through to the generic message below.
+        }
+      }
+      throw this.toExpectedGraphGroupError(error, groupId);
+    }
+  }
+
+  /**
+   * SharePoint represents both real Entra security groups and built-in Entra directory roles
+   * (Global Administrator, SharePoint Administrator, etc.) with the same claim format
+   * (`c:0t.c|tenant|<guid>`), so a claim that's actually a role id (or a since-deleted group)
+   * 404s here - Graph's /groups endpoint doesn't recognize either as a group. Surface that as a
+   * clear, expected condition instead of letting Graph's raw error propagate as a console-error
+   * storm; a 403 means the same claim resolved but this app isn't authorized to read it (e.g. a
+   * role membership read that needs a permission this app hasn't been granted yet).
+   */
+  private toExpectedGraphGroupError(error: any, groupId: string): Error {
+    const statusCode = error?.statusCode;
+    if (statusCode === 404) {
+      return new ExpectedPermissionResolutionError(
+        `This Entra ID object (${groupId}) couldn't be found as a security group - it may be a built-in directory role (like Global Administrator), which SharePoint represents using the same claim format, or a security group that has since been deleted. Role membership can't be listed here without the RoleManagement.Read.Directory permission.`
+      );
+    }
+    if (statusCode === 403) {
+      return new ExpectedPermissionResolutionError(
+        `Access denied reading Entra ID object ${groupId} - your tenant admin has not approved this app's pending Graph API permission request yet. Approve it in the SharePoint Admin Center's API access page to continue.`
+      );
+    }
+    return error instanceof Error ? error : new Error(String(error));
   }
 
   /** Direct (non-transitive) nested groups of an Entra group, one level down. */
   private async resolveEntraGroupNestedGroups(webUrl: string, groupId: string): Promise<SharePointGroupInfo[]> {
     const client = await this.graphClientPromise;
 
+    try {
+      return await this.fetchEntraGroupNestedGroups(client, webUrl, groupId);
+    } catch (error: any) {
+      if (error?.statusCode === 404) {
+        try {
+          return await this.fetchDirectoryRoleNestedGroups(client, webUrl, groupId);
+        } catch (roleError: any) {
+          if (roleError?.statusCode === 403) {
+            throw new ExpectedPermissionResolutionError(
+              `This Entra ID object (${groupId}) appears to be a built-in directory role, but your tenant admin has not approved this app's RoleManagement.Read.Directory permission request yet - approve it in the SharePoint Admin Center's API access page to list its nested groups.`
+            );
+          }
+          // Not resolvable as a directory role either - fall through to the generic message below.
+        }
+      }
+      throw this.toExpectedGraphGroupError(error, groupId);
+    }
+  }
+
+  private async fetchEntraGroupNestedGroups(client: MSGraphClientV3, webUrl: string, groupId: string): Promise<SharePointGroupInfo[]> {
     const response = await client
       .api(`/groups/${encodeURIComponent(groupId)}/members/microsoft.graph.group`)
+      .version('v1.0')
+      .select(['id', 'displayName'].join(','))
+      .get();
+
+    const members: any[] = response?.value || [];
+    return members.map((member: any) => ({
+      webUrl,
+      principalType: PrincipalType.SecurityGroup,
+      loginName: `c:0t.c|tenant|${member.id}`,
+      displayName: member.displayName
+    }));
+  }
+
+  /**
+   * Directory roles are usually assigned to users, but Entra RBAC also allows assigning a role to a
+   * group (its members then inherit the role) - so, mirroring fetchEntraGroupNestedGroups, this
+   * asks Graph for the group-typed members of an already-activated role, given its own object id.
+   */
+  private async fetchDirectoryRoleNestedGroups(client: MSGraphClientV3, webUrl: string, roleId: string): Promise<SharePointGroupInfo[]> {
+    const response = await client
+      .api(`/directoryRoles/${encodeURIComponent(roleId)}/members/microsoft.graph.group`)
       .version('v1.0')
       .select(['id', 'displayName'].join(','))
       .get();

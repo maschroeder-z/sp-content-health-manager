@@ -17,7 +17,7 @@ import type { LinkInfo } from '../../../models/LinkInfo';
 import { CheckmarkCircleColor, CheckmarkCircleHintRegular, FlagPrideIntersexInclusiveProgressFilled, QuestionCircleColor, WarningColor, Search24Regular, DataTrending24Regular, List24Regular, Link24Regular, Clock24Regular, LockClosed24Regular, LockOpen24Regular, ChevronDown24Regular, ChevronUp24Regular, DatabaseSearch24Regular, Open24Regular, Dismiss24Regular, KeyMultiple24Regular, Info24Regular, PeopleTeam16Regular, Person16Regular, DocumentCheckmark24Regular, Library16Regular, List16Regular } from "@fluentui/react-icons";
 import { ListInformation } from '../../../models/REST/ListInformation';
 import PermissionsManager from '../../../services/PermissionsManager';
-import { PageStatusInfo, ResolvedGroupUser, SharePointArtefact, SharePointArtefactType, SharePointGroupInfo, SharePointPermissionInfo, SharePointPrincipalPermission } from '../../../models/REST/Permissions';
+import { DirectoryRoleOption, PageStatusInfo, ResolvedGroupUser, SHAREPOINT_RELEVANT_ENTRA_ROLES, SharePointArtefact, SharePointArtefactType, SharePointGroupInfo, SharePointPermissionInfo, SharePointPrincipalPermission } from '../../../models/REST/Permissions';
 import { FieldDateRenderer, FieldTextRenderer } from '@pnp/spfx-controls-react';
 import { ListTemplateType } from '../../../Core/ListTemplateTypes';
 import * as strings from 'ContentHealthManagerWebPartStrings';
@@ -71,10 +71,16 @@ interface IContentHealthManagerState {
   isLoadingPageDetails?: boolean;
   pageDetailsLoaded?: boolean;
   pageDetailsError?: string | null;
+  selectedDirectoryRoleId: string | null;
+  directoryRoleMembers: ResolvedGroupUser[];
+  isLoadingDirectoryRoleMembers?: boolean;
+  directoryRoleMembersError?: string | null;
+  permissionsDialogTabValue: TabValue;
 }
 
 export default class ContentHealthManager extends React.Component<IContentHealthManagerProps, IContentHealthManagerState> {
-  tempSelectedSites: Site[] = [
+  tempSelectedSites: Site[] = [];
+  /*
     {
       "id": "0a83c49d-6da8-459e-8bb4-98be06a28dcc",
       "webId": "ca9dc690-1f36-49b3-9283-05547458d435",
@@ -99,7 +105,7 @@ export default class ContentHealthManager extends React.Component<IContentHealth
       "title": "Hausfeen",
       "url": "https://devsky365.sharepoint.com/sites/Hausfeen"
     }
-  ]
+   */
   dataManager: GraphDataManager;
   permissionsManager: PermissionsManager;
   // The SitePicker's built-in "clear all" (x) icon only clears its own internal
@@ -107,6 +113,10 @@ export default class ContentHealthManager extends React.Component<IContentHealth
   // directly in the DOM (capture phase, before the icon's own handler stops
   // propagation) to keep our app state in sync.
   private sitePickerContainerRef: React.RefObject<HTMLDivElement> = React.createRef();
+  // Fallback disambiguator for tree node keys when a principal has neither a principalId nor a
+  // loginName (a role assignment/group member whose Member expand came back empty) - without this,
+  // every such row would collide on the same "login:undefined" key and only the last would render.
+  private unresolvedPrincipalCounter = 0;
   // View fields for found items in library report dialog
   viewFieldsFoundItems: IViewField[] = [
     { name: 'Id', displayName: 'ID', sorting: true, isResizable: false, linkPropertyName: 'webUrl' },
@@ -393,7 +403,12 @@ export default class ContentHealthManager extends React.Component<IContentHealth
       pageDetailsCache: new Map<string, PageStatusInfo>(),
       isLoadingPageDetails: false,
       pageDetailsLoaded: false,
-      pageDetailsError: null
+      pageDetailsError: null,
+      selectedDirectoryRoleId: null,
+      directoryRoleMembers: [],
+      isLoadingDirectoryRoleMembers: false,
+      directoryRoleMembersError: null,
+      permissionsDialogTabValue: 'permissions'
     };
     this.dataManager = new GraphDataManager(this.props.msGraphClientFactory, this.props.spHTTPClient);
     this.permissionsManager = new PermissionsManager(this.props.msGraphClientFactory, this.props.spHTTPClient);
@@ -870,99 +885,134 @@ export default class ContentHealthManager extends React.Component<IContentHealth
                   {this.state.permissionsSubjectUrl && (
                     <div><strong>{strings.UrlLabel}</strong> <a href={this.state.permissionsSubjectUrl} target={'_blank'} rel={'noreferrer'}>{this.state.permissionsSubjectUrl}</a></div>
                   )}
-                  {this.state.currentArtefact && (
+                  <TabList selectedValue={this.state.permissionsDialogTabValue} onTabSelect={this.onPermissionsDialogTabSelect} style={{ marginTop: 12 }}>
+                    <Tab value="permissions">{strings.PermissionsDialogPermissionsTab}</Tab>
+                    <Tab value="entraRoles">{strings.PermissionsDialogEntraRolesTab}</Tab>
+                  </TabList>
+                  {this.state.permissionsDialogTabValue === 'permissions' && (
                     <div style={{ marginTop: 12 }}>
-                      <PeoplePicker
-                        context={{
-                          absoluteUrl: this.state.currentArtefact.webUrl,
-                          msGraphClientFactory: this.props.msGraphClientFactory,
-                          spHttpClient: this.props.spHTTPClient
-                        }}
-                        showtooltip={true}
-                        personSelectionLimit={1}
-                        principalTypes={[PickerPrincipalType.User, PickerPrincipalType.SecurityGroup, PickerPrincipalType.SharePointGroup, PickerPrincipalType.DistributionList]}
-                        useSubstrateSearch={false}
-                        searchTextLimit={2}
-                        placeholder={strings.SearchUserOrGroupPlaceholder}
-                        onChange={(items: IPersonaProps[]) => {
-                          const item = items && items[0] ? items[0] as unknown as IPeoplePickerUserItem : undefined;
-                          if (item) {
-                            void this.checkPrincipalAccess(item);
-                          } else {
-                            this.setState({ principalAccessResult: null, principalAccessError: null });
-                          }
-                        }}
-                      />
-                      {this.state.isCheckingPrincipalAccess && <Spinner size="tiny" className={styles.progressSpinner} />}
-                      {this.state.principalAccessError && (
-                        <div style={{ color: '#d32f2f', marginTop: 8 }}>{this.state.principalAccessError}</div>
-                      )}
-                      {!this.state.isCheckingPrincipalAccess && !this.state.principalAccessError && this.state.principalAccessResult && (
-                        <div style={{ marginTop: 8 }}>
-                          {this.state.principalAccessResult.hasAccess
-                            ? strings.HasAccessLabel
-                              .replace('{0}', this.state.principalAccessResult.displayName)
-                              .replace('{1}', this.getPermissionLevelLabel(this.state.principalAccessResult.permissionInfo))
-                            : strings.NoAccessLabel.replace('{0}', this.state.principalAccessResult.displayName)}
+                      {this.state.currentArtefact && (
+                        <div style={{ marginBottom: 12 }}>
+                          <PeoplePicker
+                            context={{
+                              absoluteUrl: this.state.currentArtefact.webUrl,
+                              msGraphClientFactory: this.props.msGraphClientFactory,
+                              spHttpClient: this.props.spHTTPClient
+                            }}
+                            showtooltip={true}
+                            personSelectionLimit={1}
+                            principalTypes={[PickerPrincipalType.User, PickerPrincipalType.SecurityGroup, PickerPrincipalType.SharePointGroup, PickerPrincipalType.DistributionList]}
+                            useSubstrateSearch={false}
+                            searchTextLimit={2}
+                            placeholder={strings.SearchUserOrGroupPlaceholder}
+                            onChange={(items: IPersonaProps[]) => {
+                              const item = items && items[0] ? items[0] as unknown as IPeoplePickerUserItem : undefined;
+                              if (item) {
+                                void this.checkPrincipalAccess(item);
+                              } else {
+                                this.setState({ principalAccessResult: null, principalAccessError: null });
+                              }
+                            }}
+                          />
+                          {this.state.isCheckingPrincipalAccess && <Spinner size="tiny" className={styles.progressSpinner} />}
+                          {this.state.principalAccessError && (
+                            <div style={{ color: '#d32f2f', marginTop: 8 }}>{this.state.principalAccessError}</div>
+                          )}
+                          {!this.state.isCheckingPrincipalAccess && !this.state.principalAccessError && this.state.principalAccessResult && (
+                            <div style={{ marginTop: 8 }}>
+                              {this.state.principalAccessResult.hasAccess
+                                ? strings.HasAccessLabel
+                                  .replace('{0}', this.state.principalAccessResult.displayName)
+                                  .replace('{1}', this.getPermissionLevelLabel(this.state.principalAccessResult.permissionInfo))
+                                : strings.NoAccessLabel.replace('{0}', this.state.principalAccessResult.displayName)}
+                            </div>
+                          )}
                         </div>
+                      )}
+                      {this.state.isLoadingPagePermissions && <Spinner size="tiny" className={styles.progressSpinner} />}
+                      {this.state.pagePermissionsError && (
+                        <div style={{ color: '#d32f2f', marginTop: 8 }}>{this.state.pagePermissionsError}</div>
+                      )}
+                      {!this.state.isLoadingPagePermissions && !this.state.pagePermissionsError && this.state.pagePermissions.length === 0 && (
+                        <div style={{ marginTop: 8 }}>{strings.NoPermissionsFound}</div>
+                      )}
+                      {!this.state.isLoadingPagePermissions && !this.state.pagePermissionsError && this.state.pagePermissions.length > 0 && (
+                        <PanelGroup direction="horizontal" style={{ height: 420, marginTop: 12 }}>
+                          <Panel defaultSize={30} minSize={15} maxSize={60}>
+                            <div style={{ height: '100%', overflow: 'auto', borderRight: '1px solid #e0e0e0' }}>
+                              <Tree
+                                openItems={this.state.openTreeNodeKeys}
+                                onOpenChange={this.handleTreeOpenChange}
+                                aria-label={strings.PagePermissionsTitle}
+                              >
+                                <TreeItem itemType="leaf" value="root">
+                                  <TreeItemLayout
+                                    onClick={() => this.selectTreeNode('root')}
+                                    style={this.state.selectedTreeNodeKey === 'root' ? { background: '#e0e0e0' } : undefined}
+                                  >
+                                    {this.state.permissionsSubjectTitle}
+                                  </TreeItemLayout>
+                                </TreeItem>
+                                {this.state.permissionGroupTree.map(node => this.renderGroupTreeNode(node))}
+                              </Tree>
+                            </div>
+                          </Panel>
+                          <PanelResizeHandle style={{ width: 6, cursor: 'col-resize', background: '#e0e0e0' }} />
+                          <Panel>
+                            <div style={{ height: '100%', overflow: 'auto', paddingLeft: 8 }}>
+                              {this.state.selectedTreeNodeKey === 'root' ? (
+                                <ListView
+                                  items={this.state.pagePermissions.filter(p => !p.isGroup)}
+                                  viewFields={this.viewFieldsPermissions}
+                                  compact={true}
+                                  selectionMode={SelectionMode.none} />
+                              ) : (
+                                <>
+                                  {this.state.isLoadingGroupMembers && <Spinner size="tiny" className={styles.progressSpinner} />}
+                                  {this.state.groupMembersError && (
+                                    <div style={{ color: '#d32f2f', marginTop: 8 }}>{this.state.groupMembersError}</div>
+                                  )}
+                                  {!this.state.isLoadingGroupMembers && !this.state.groupMembersError && (
+                                    <ListView
+                                      items={this.state.groupMemberCache.get(this.state.selectedTreeNodeKey) || []}
+                                      viewFields={this.viewFieldsGroupMembers}
+                                      compact={true}
+                                      selectionMode={SelectionMode.none} />
+                                  )}
+                                </>
+                              )}
+                            </div>
+                          </Panel>
+                        </PanelGroup>
                       )}
                     </div>
                   )}
-                  {this.state.isLoadingPagePermissions && <Spinner size="tiny" className={styles.progressSpinner} />}
-                  {this.state.pagePermissionsError && (
-                    <div style={{ color: '#d32f2f', marginTop: 8 }}>{this.state.pagePermissionsError}</div>
-                  )}
-                  {!this.state.isLoadingPagePermissions && !this.state.pagePermissionsError && this.state.pagePermissions.length === 0 && (
-                    <div style={{ marginTop: 8 }}>{strings.NoPermissionsFound}</div>
-                  )}
-                  {!this.state.isLoadingPagePermissions && !this.state.pagePermissionsError && this.state.pagePermissions.length > 0 && (
-                    <PanelGroup direction="horizontal" style={{ height: 420, marginTop: 12 }}>
-                      <Panel defaultSize={30} minSize={15} maxSize={60}>
-                        <div style={{ height: '100%', overflow: 'auto', borderRight: '1px solid #e0e0e0' }}>
-                          <Tree
-                            openItems={this.state.openTreeNodeKeys}
-                            onOpenChange={this.handleTreeOpenChange}
-                            aria-label={strings.PagePermissionsTitle}
-                          >
-                            <TreeItem itemType="leaf" value="root">
-                              <TreeItemLayout
-                                onClick={() => this.selectTreeNode('root')}
-                                style={this.state.selectedTreeNodeKey === 'root' ? { background: '#e0e0e0' } : undefined}
-                              >
-                                {this.state.permissionsSubjectTitle}
-                              </TreeItemLayout>
-                            </TreeItem>
-                            {this.state.permissionGroupTree.map(node => this.renderGroupTreeNode(node))}
-                          </Tree>
-                        </div>
-                      </Panel>
-                      <PanelResizeHandle style={{ width: 6, cursor: 'col-resize', background: '#e0e0e0' }} />
-                      <Panel>
-                        <div style={{ height: '100%', overflow: 'auto', paddingLeft: 8 }}>
-                          {this.state.selectedTreeNodeKey === 'root' ? (
-                            <ListView
-                              items={this.state.pagePermissions.filter(p => !p.isGroup)}
-                              viewFields={this.viewFieldsPermissions}
-                              compact={true}
-                              selectionMode={SelectionMode.none} />
-                          ) : (
-                            <>
-                              {this.state.isLoadingGroupMembers && <Spinner size="tiny" className={styles.progressSpinner} />}
-                              {this.state.groupMembersError && (
-                                <div style={{ color: '#d32f2f', marginTop: 8 }}>{this.state.groupMembersError}</div>
-                              )}
-                              {!this.state.isLoadingGroupMembers && !this.state.groupMembersError && (
-                                <ListView
-                                  items={this.state.groupMemberCache.get(this.state.selectedTreeNodeKey) || []}
-                                  viewFields={this.viewFieldsGroupMembers}
-                                  compact={true}
-                                  selectionMode={SelectionMode.none} />
-                              )}
-                            </>
-                          )}
-                        </div>
-                      </Panel>
-                    </PanelGroup>
+                  {this.state.permissionsDialogTabValue === 'entraRoles' && (
+                    <div style={{ marginTop: 12 }}>
+                      <Field label={strings.DirectoryRolePickerLabel} hint={strings.DirectoryRolePickerHint}>
+                        <Dropdown
+                          placeholder={strings.SelectDirectoryRolePlaceholder}
+                          value={SHAREPOINT_RELEVANT_ENTRA_ROLES.find((r: DirectoryRoleOption) => r.roleTemplateId === this.state.selectedDirectoryRoleId)?.displayName || ''}
+                          selectedOptions={this.state.selectedDirectoryRoleId ? [this.state.selectedDirectoryRoleId] : []}
+                          onOptionSelect={(_: any, data: any) => data.optionValue && this.selectDirectoryRole(data.optionValue)}
+                        >
+                          {SHAREPOINT_RELEVANT_ENTRA_ROLES.map((role: DirectoryRoleOption) => (
+                            <Option key={role.roleTemplateId} value={role.roleTemplateId}>{role.displayName}</Option>
+                          ))}
+                        </Dropdown>
+                      </Field>
+                      {this.state.isLoadingDirectoryRoleMembers && <Spinner size="tiny" className={styles.progressSpinner} />}
+                      {this.state.directoryRoleMembersError && (
+                        <div style={{ color: '#d32f2f', marginTop: 8 }}>{this.state.directoryRoleMembersError}</div>
+                      )}
+                      {!this.state.isLoadingDirectoryRoleMembers && !this.state.directoryRoleMembersError && this.state.selectedDirectoryRoleId && (
+                        <ListView
+                          items={this.state.directoryRoleMembers}
+                          viewFields={this.viewFieldsGroupMembers}
+                          compact={true}
+                          selectionMode={SelectionMode.none} />
+                      )}
+                    </div>
                   )}
                 </div>
               </DialogContent>
@@ -1016,6 +1066,7 @@ export default class ContentHealthManager extends React.Component<IContentHealth
     const isLibraryMode = this.state.selectedTabValue === 'tab2' && !!this.state.selectedLibrary;
     this.setState({
       isPagePermissionsOpen: true,
+      permissionsDialogTabValue: 'permissions',
       isLoadingPagePermissions: true,
       pagePermissions: [],
       pagePermissionsError: null,
@@ -1130,7 +1181,11 @@ export default class ContentHealthManager extends React.Component<IContentHealth
         loginName: source.loginName,
         displayName: source.displayName
       };
-    const key = groupInfo.principalId !== undefined ? `id:${groupInfo.principalId}` : `login:${groupInfo.loginName}`;
+    const key = groupInfo.principalId !== undefined
+      ? `id:${groupInfo.principalId}`
+      : groupInfo.loginName
+        ? `login:${groupInfo.loginName}`
+        : `unresolved:${this.unresolvedPrincipalCounter++}`;
     return { key, groupInfo, children: undefined };
   }
 
@@ -1209,6 +1264,28 @@ export default class ContentHealthManager extends React.Component<IContentHealth
       this.setState({ groupMembersError: error instanceof Error ? error.message : String(error) });
     } finally {
       this.setState({ isLoadingGroupMembers: false });
+    }
+  }
+
+  private selectDirectoryRole(roleTemplateId: string): void {
+    this.setState({
+      selectedDirectoryRoleId: roleTemplateId,
+      directoryRoleMembers: [],
+      directoryRoleMembersError: null
+    });
+    void this.loadDirectoryRoleMembers(roleTemplateId);
+  }
+
+  private async loadDirectoryRoleMembers(roleTemplateId: string): Promise<void> {
+    this.setState({ isLoadingDirectoryRoleMembers: true, directoryRoleMembersError: null });
+    try {
+      const members = await this.permissionsManager.resolveDirectoryRoleUsers(roleTemplateId);
+      this.setState({ directoryRoleMembers: members });
+    } catch (error) {
+      console.error('Error resolving directory role members:', error);
+      this.setState({ directoryRoleMembersError: error instanceof Error ? error.message : String(error) });
+    } finally {
+      this.setState({ isLoadingDirectoryRoleMembers: false });
     }
   }
 
@@ -1378,6 +1455,7 @@ export default class ContentHealthManager extends React.Component<IContentHealth
     const item = this.state.selectedFoundItem;
     this.setState({
       isPagePermissionsOpen: true,
+      permissionsDialogTabValue: 'permissions',
       isLoadingPagePermissions: true,
       pagePermissions: [],
       pagePermissionsError: null,
@@ -1533,6 +1611,10 @@ export default class ContentHealthManager extends React.Component<IContentHealth
 
   private onTabSelect = (event: any, data: { value: TabValue }): void => {
     this.setState({ selectedTabValue: data.value });
+  }
+
+  private onPermissionsDialogTabSelect = (event: any, data: { value: TabValue }): void => {
+    this.setState({ permissionsDialogTabValue: data.value });
   }
 
   private onFoundItemSelectionChanged = (items: any[]): void => {

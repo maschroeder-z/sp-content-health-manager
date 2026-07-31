@@ -127,6 +127,11 @@ define([], function() {
     "NotCheckedOut": "Not checked out",
     "CheckoutNotSupported": "Not supported",
     "LibraryTypeLabel": "Document library",
-    "ListTypeLabel": "List"
+    "ListTypeLabel": "List",
+    "DirectoryRolePickerLabel": "Built-in Entra ID role",
+    "DirectoryRolePickerHint": "Look up who holds a built-in Entra ID admin role, such as Global Administrator. Requires tenant admin approval of the RoleManagement.Read.Directory permission request.",
+    "SelectDirectoryRolePlaceholder": "Select a role...",
+    "PermissionsDialogPermissionsTab": "Permissions",
+    "PermissionsDialogEntraRolesTab": "Built-in Entra ID Roles"
   }
 });

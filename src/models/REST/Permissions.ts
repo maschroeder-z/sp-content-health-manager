@@ -94,3 +94,27 @@ export interface PageStatusInfo {
   hasUniquePermission: boolean;
   checkedOutBy: string | null;   // display name of the user with the page checked out, or null if not checked out
 }
+
+/** One entry in the built-in Entra directory role picker (PermissionsManager.resolveDirectoryRoleUsers). */
+export interface DirectoryRoleOption {
+  displayName: string;
+  roleTemplateId: string;  // universal Entra role template GUID, same across every tenant
+}
+
+/**
+ * Built-in Entra directory roles relevant to a SharePoint permissions audit, with their universal
+ * role template GUIDs (identical in every tenant). Verified against Microsoft's built-in roles
+ * reference: https://learn.microsoft.com/en-us/entra/identity/role-based-access-control/permissions-reference
+ * Querying a role's members requires the RoleManagement.Read.Directory Graph permission, requested
+ * in config/package-solution.json and subject to tenant admin approval.
+ */
+export const SHAREPOINT_RELEVANT_ENTRA_ROLES: DirectoryRoleOption[] = [
+  { displayName: 'Global Administrator', roleTemplateId: '62e90394-69f5-4237-9190-012177145e10' },
+  { displayName: 'SharePoint Administrator', roleTemplateId: 'f28a1f50-f6e7-4571-818b-6a12f2af6b6c' },
+  { displayName: 'Global Reader', roleTemplateId: 'f2ef992c-3afb-46b9-b7cf-a126ee74c451' },
+  { displayName: 'User Administrator', roleTemplateId: 'fe930be7-5e62-47db-91af-98c3a49a38b1' },
+  { displayName: 'Security Administrator', roleTemplateId: '194ae4cb-b126-40b2-bd5b-6091b380977d' },
+  { displayName: 'Teams Administrator', roleTemplateId: '69091246-20e8-4a56-aa4d-066075b2a7a8' },
+  { displayName: 'Exchange Administrator', roleTemplateId: '29232cdf-9323-42fd-ade2-1d097af3e4de' },
+  { displayName: 'Compliance Administrator', roleTemplateId: '17315797-102d-40b4-93e0-432062caca18' }
+];

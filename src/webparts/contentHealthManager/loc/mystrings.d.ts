@@ -138,6 +138,12 @@ declare interface IContentHealthManagerWebPartStrings {
   CheckoutNotSupported: string;
   LibraryTypeLabel: string;
   ListTypeLabel: string;
+  // Built-in Entra directory role picker
+  DirectoryRolePickerLabel: string;
+  DirectoryRolePickerHint: string;
+  SelectDirectoryRolePlaceholder: string;
+  PermissionsDialogPermissionsTab: string;
+  PermissionsDialogEntraRolesTab: string;
 }
 
 declare module 'ContentHealthManagerWebPartStrings' {

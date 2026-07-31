@@ -1,9 +1,22 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.PermissionsManager = void 0;
+exports.PermissionsManager = exports.ExpectedPermissionResolutionError = void 0;
 var tslib_1 = require("tslib");
 var sp_http_1 = require("@microsoft/sp-http");
 var Permissions_1 = require("../models/REST/Permissions");
+/**
+ * Marks an error as an expected, already-explained condition (e.g. an Entra claim that turned
+ * out to be a directory role rather than a group) so callers can log it quietly instead of as a
+ * console.error - the message is already user-facing and actionable, not a bug to investigate.
+ */
+var ExpectedPermissionResolutionError = /** @class */ (function (_super) {
+    tslib_1.__extends(ExpectedPermissionResolutionError, _super);
+    function ExpectedPermissionResolutionError() {
+        return _super !== null && _super.apply(this, arguments) || this;
+    }
+    return ExpectedPermissionResolutionError;
+}(Error));
+exports.ExpectedPermissionResolutionError = ExpectedPermissionResolutionError;
 var PermissionsManager = /** @class */ (function () {
     function PermissionsManager(msGraphClientFactory, spHttpClient) {
         this.spHttpClient = spHttpClient;
@@ -34,11 +47,14 @@ var PermissionsManager = /** @class */ (function () {
                                 var member = roleAssignment.Member || {};
                                 var roles = ((_a = roleAssignment.RoleDefinitionBindings) === null || _a === void 0 ? void 0 : _a.results) || [];
                                 var principalType = member.PrincipalType;
+                                if (!member.LoginName && !member.Title) {
+                                    console.warn('get4ArtefactPermissions: a role assignment\'s Member came back empty - the $expand=Member may have partially failed for this principal.', roleAssignment);
+                                }
                                 return {
                                     principalId: member.Id,
                                     principalType: principalType,
                                     isGroup: principalType !== Permissions_1.PrincipalType.User,
-                                    displayName: member.Title,
+                                    displayName: member.Title || member.LoginName || '(unresolved principal)',
                                     loginName: member.LoginName,
                                     email: member.Email || undefined,
                                     roles: roles.map(function (role) { return role.Name; })
@@ -358,7 +374,12 @@ var PermissionsManager = /** @class */ (function () {
                     case 4: throw new Error("Unsupported group principal (not a SharePoint group or Entra-backed security group): ".concat(groupInfo.loginName || groupInfo.displayName));
                     case 5:
                         error_8 = _a.sent();
-                        console.error('Error resolving group users:', error_8);
+                        if (error_8 instanceof ExpectedPermissionResolutionError) {
+                            console.warn('Could not resolve group users:', error_8.message);
+                        }
+                        else {
+                            console.error('Error resolving group users:', error_8);
+                        }
                         throw error_8;
                     case 6: return [2 /*return*/];
                 }
@@ -391,9 +412,81 @@ var PermissionsManager = /** @class */ (function () {
                     case 4: throw new Error("Unsupported group principal (not a SharePoint group or Entra-backed security group): ".concat(groupInfo.loginName || groupInfo.displayName));
                     case 5:
                         error_9 = _a.sent();
-                        console.error('Error resolving nested groups:', error_9);
+                        if (error_9 instanceof ExpectedPermissionResolutionError) {
+                            console.warn('Could not resolve nested groups:', error_9.message);
+                        }
+                        else {
+                            console.error('Error resolving nested groups:', error_9);
+                        }
                         throw error_9;
                     case 6: return [2 /*return*/];
+                }
+            });
+        });
+    };
+    /**
+     * Resolves the members of a built-in Entra directory role (e.g. Global Administrator), given its
+     * universal role template id (see models/REST/Permissions.ts SHAREPOINT_RELEVANT_ENTRA_ROLES).
+     * Unlike security groups, directory roles are addressed via /directoryRoles, not /groups - a role
+     * that has never been assigned to anyone in this tenant may not be "activated" yet and this call
+     * will 404 for it (activating one requires the write-scoped RoleManagement.ReadWrite.Directory
+     * permission, out of scope for a read-only permissions audit tool). Requires the
+     * RoleManagement.Read.Directory Graph permission, requested in config/package-solution.json and
+     * subject to tenant admin approval - until approved this throws a 403 GraphError.
+     */
+    PermissionsManager.prototype.resolveDirectoryRoleUsers = function (roleTemplateId) {
+        return tslib_1.__awaiter(this, void 0, void 0, function () {
+            var client, role, error_10;
+            return tslib_1.__generator(this, function (_a) {
+                switch (_a.label) {
+                    case 0:
+                        _a.trys.push([0, 4, , 5]);
+                        return [4 /*yield*/, this.graphClientPromise];
+                    case 1:
+                        client = _a.sent();
+                        return [4 /*yield*/, client
+                                .api("/directoryRoles(roleTemplateId='".concat(encodeURIComponent(roleTemplateId), "')"))
+                                .version('v1.0')
+                                .select('id')
+                                .get()];
+                    case 2:
+                        role = _a.sent();
+                        return [4 /*yield*/, this.fetchDirectoryRoleMembersByRoleId(client, role.id)];
+                    case 3: return [2 /*return*/, _a.sent()];
+                    case 4:
+                        error_10 = _a.sent();
+                        console.error('Error resolving directory role members:', error_10);
+                        throw error_10;
+                    case 5: return [2 /*return*/];
+                }
+            });
+        });
+    };
+    /**
+     * Fetches the members of an already-activated directory role, given its own (tenant-specific)
+     * object id - not a roleTemplateId. Shared by resolveDirectoryRoleUsers (which resolves a
+     * universal roleTemplateId to this id first) and resolveEntraGroupUsers's directory-role
+     * fallback (which already has what's presumably this id, extracted directly from a SharePoint
+     * claim, so it skips the roleTemplateId resolution step entirely).
+     */
+    PermissionsManager.prototype.fetchDirectoryRoleMembersByRoleId = function (client, roleId) {
+        return tslib_1.__awaiter(this, void 0, void 0, function () {
+            var response, members;
+            return tslib_1.__generator(this, function (_a) {
+                switch (_a.label) {
+                    case 0: return [4 /*yield*/, client
+                            .api("/directoryRoles/".concat(encodeURIComponent(roleId), "/members"))
+                            .version('v1.0')
+                            .select(['id', 'displayName', 'mail', 'userPrincipalName'].join(','))
+                            .get()];
+                    case 1:
+                        response = _a.sent();
+                        members = (response === null || response === void 0 ? void 0 : response.value) || [];
+                        return [2 /*return*/, members.map(function (member) { return ({
+                                id: member.id,
+                                displayName: member.displayName,
+                                email: member.mail || member.userPrincipalName || undefined
+                            }); })];
                 }
             });
         });
@@ -411,7 +504,7 @@ var PermissionsManager = /** @class */ (function () {
                                 .filter(function (member) { return !_this.tryExtractEntraGroupId(member.LoginName); })
                                 .map(function (member) { return ({
                                 id: String(member.Id),
-                                displayName: member.Title,
+                                displayName: member.Title || member.LoginName || '(unresolved principal)',
                                 email: member.Email || undefined,
                                 loginName: member.LoginName
                             }); })];
@@ -448,39 +541,63 @@ var PermissionsManager = /** @class */ (function () {
             });
         });
     };
+    /**
+     * SharePoint REST collections default to a ~100-item page unless $top is specified, and this
+     * endpoint doesn't automatically follow up - without pagination, groups larger than that would
+     * silently lose members past the first page. $top=5000 matches SharePoint's own hard collection
+     * cap, and d.__next (odata=verbose) is followed in case a tenant enforces a smaller page size.
+     */
     PermissionsManager.prototype.fetchSharePointGroupMembers = function (webUrl, groupId) {
         return tslib_1.__awaiter(this, void 0, void 0, function () {
-            var response, data;
-            return tslib_1.__generator(this, function (_a) {
-                switch (_a.label) {
-                    case 0: return [4 /*yield*/, this.spHttpClient.get("".concat(this.normalizeWebUrl(webUrl), "/_api/web/sitegroups/getbyid(").concat(groupId, ")/users"), sp_http_1.SPHttpClient.configurations.v1, { headers: { 'Accept': 'application/json;odata=verbose' } })];
+            var members, nextUrl, response, data, missingDetails;
+            var _a;
+            return tslib_1.__generator(this, function (_b) {
+                switch (_b.label) {
+                    case 0:
+                        members = [];
+                        nextUrl = "".concat(this.normalizeWebUrl(webUrl), "/_api/web/sitegroups/getbyid(").concat(groupId, ")/users?$top=5000");
+                        _b.label = 1;
                     case 1:
-                        response = _a.sent();
+                        if (!nextUrl) return [3 /*break*/, 4];
+                        return [4 /*yield*/, this.spHttpClient.get(nextUrl, sp_http_1.SPHttpClient.configurations.v1, { headers: { 'Accept': 'application/json;odata=verbose' } })];
+                    case 2:
+                        response = _b.sent();
                         if (!response.ok) {
                             throw new Error("HTTP error! status: ".concat(response.status));
                         }
                         return [4 /*yield*/, response.json()];
-                    case 2:
-                        data = _a.sent();
-                        return [2 /*return*/, this.unwrapCollection(data)];
+                    case 3:
+                        data = _b.sent();
+                        members.push.apply(members, this.unwrapCollection(data));
+                        nextUrl = ((_a = data === null || data === void 0 ? void 0 : data.d) === null || _a === void 0 ? void 0 : _a.__next) || undefined;
+                        return [3 /*break*/, 1];
+                    case 4:
+                        missingDetails = members.filter(function (member) { return !member.LoginName || !member.Title; });
+                        if (missingDetails.length > 0) {
+                            console.warn("fetchSharePointGroupMembers: ".concat(missingDetails.length, " member(s) of group ").concat(groupId, " came back with a missing LoginName/Title - the REST expand may have partially failed for these principals."), missingDetails);
+                        }
+                        return [2 /*return*/, members];
                 }
             });
         });
     };
     PermissionsManager.prototype.resolveEntraGroupUsers = function (groupId) {
         return tslib_1.__awaiter(this, void 0, void 0, function () {
-            var client, response, members;
+            var client, response, members, error_11, roleError_1;
             return tslib_1.__generator(this, function (_a) {
                 switch (_a.label) {
                     case 0: return [4 /*yield*/, this.graphClientPromise];
                     case 1:
                         client = _a.sent();
+                        _a.label = 2;
+                    case 2:
+                        _a.trys.push([2, 4, , 9]);
                         return [4 /*yield*/, client
                                 .api("/groups/".concat(encodeURIComponent(groupId), "/transitiveMembers/microsoft.graph.user"))
                                 .version('v1.0')
                                 .select(['id', 'displayName', 'mail', 'userPrincipalName'].join(','))
                                 .get()];
-                    case 2:
+                    case 3:
                         response = _a.sent();
                         members = (response === null || response === void 0 ? void 0 : response.value) || [];
                         return [2 /*return*/, members.map(function (member) { return ({
@@ -488,25 +605,118 @@ var PermissionsManager = /** @class */ (function () {
                                 displayName: member.displayName,
                                 email: member.mail || member.userPrincipalName || undefined
                             }); })];
+                    case 4:
+                        error_11 = _a.sent();
+                        if (!((error_11 === null || error_11 === void 0 ? void 0 : error_11.statusCode) === 404)) return [3 /*break*/, 8];
+                        _a.label = 5;
+                    case 5:
+                        _a.trys.push([5, 7, , 8]);
+                        return [4 /*yield*/, this.fetchDirectoryRoleMembersByRoleId(client, groupId)];
+                    case 6: return [2 /*return*/, _a.sent()];
+                    case 7:
+                        roleError_1 = _a.sent();
+                        if ((roleError_1 === null || roleError_1 === void 0 ? void 0 : roleError_1.statusCode) === 403) {
+                            throw new ExpectedPermissionResolutionError("This Entra ID object (".concat(groupId, ") appears to be a built-in directory role, but your tenant admin has not approved this app's RoleManagement.Read.Directory permission request yet - approve it in the SharePoint Admin Center's API access page to list its members."));
+                        }
+                        return [3 /*break*/, 8];
+                    case 8: throw this.toExpectedGraphGroupError(error_11, groupId);
+                    case 9: return [2 /*return*/];
                 }
             });
         });
     };
+    /**
+     * SharePoint represents both real Entra security groups and built-in Entra directory roles
+     * (Global Administrator, SharePoint Administrator, etc.) with the same claim format
+     * (`c:0t.c|tenant|<guid>`), so a claim that's actually a role id (or a since-deleted group)
+     * 404s here - Graph's /groups endpoint doesn't recognize either as a group. Surface that as a
+     * clear, expected condition instead of letting Graph's raw error propagate as a console-error
+     * storm; a 403 means the same claim resolved but this app isn't authorized to read it (e.g. a
+     * role membership read that needs a permission this app hasn't been granted yet).
+     */
+    PermissionsManager.prototype.toExpectedGraphGroupError = function (error, groupId) {
+        var statusCode = error === null || error === void 0 ? void 0 : error.statusCode;
+        if (statusCode === 404) {
+            return new ExpectedPermissionResolutionError("This Entra ID object (".concat(groupId, ") couldn't be found as a security group - it may be a built-in directory role (like Global Administrator), which SharePoint represents using the same claim format, or a security group that has since been deleted. Role membership can't be listed here without the RoleManagement.Read.Directory permission."));
+        }
+        if (statusCode === 403) {
+            return new ExpectedPermissionResolutionError("Access denied reading Entra ID object ".concat(groupId, " - your tenant admin has not approved this app's pending Graph API permission request yet. Approve it in the SharePoint Admin Center's API access page to continue."));
+        }
+        return error instanceof Error ? error : new Error(String(error));
+    };
     /** Direct (non-transitive) nested groups of an Entra group, one level down. */
     PermissionsManager.prototype.resolveEntraGroupNestedGroups = function (webUrl, groupId) {
         return tslib_1.__awaiter(this, void 0, void 0, function () {
-            var client, response, members;
+            var client, error_12, roleError_2;
             return tslib_1.__generator(this, function (_a) {
                 switch (_a.label) {
                     case 0: return [4 /*yield*/, this.graphClientPromise];
                     case 1:
                         client = _a.sent();
-                        return [4 /*yield*/, client
-                                .api("/groups/".concat(encodeURIComponent(groupId), "/members/microsoft.graph.group"))
-                                .version('v1.0')
-                                .select(['id', 'displayName'].join(','))
-                                .get()];
+                        _a.label = 2;
                     case 2:
+                        _a.trys.push([2, 4, , 9]);
+                        return [4 /*yield*/, this.fetchEntraGroupNestedGroups(client, webUrl, groupId)];
+                    case 3: return [2 /*return*/, _a.sent()];
+                    case 4:
+                        error_12 = _a.sent();
+                        if (!((error_12 === null || error_12 === void 0 ? void 0 : error_12.statusCode) === 404)) return [3 /*break*/, 8];
+                        _a.label = 5;
+                    case 5:
+                        _a.trys.push([5, 7, , 8]);
+                        return [4 /*yield*/, this.fetchDirectoryRoleNestedGroups(client, webUrl, groupId)];
+                    case 6: return [2 /*return*/, _a.sent()];
+                    case 7:
+                        roleError_2 = _a.sent();
+                        if ((roleError_2 === null || roleError_2 === void 0 ? void 0 : roleError_2.statusCode) === 403) {
+                            throw new ExpectedPermissionResolutionError("This Entra ID object (".concat(groupId, ") appears to be a built-in directory role, but your tenant admin has not approved this app's RoleManagement.Read.Directory permission request yet - approve it in the SharePoint Admin Center's API access page to list its nested groups."));
+                        }
+                        return [3 /*break*/, 8];
+                    case 8: throw this.toExpectedGraphGroupError(error_12, groupId);
+                    case 9: return [2 /*return*/];
+                }
+            });
+        });
+    };
+    PermissionsManager.prototype.fetchEntraGroupNestedGroups = function (client, webUrl, groupId) {
+        return tslib_1.__awaiter(this, void 0, void 0, function () {
+            var response, members;
+            return tslib_1.__generator(this, function (_a) {
+                switch (_a.label) {
+                    case 0: return [4 /*yield*/, client
+                            .api("/groups/".concat(encodeURIComponent(groupId), "/members/microsoft.graph.group"))
+                            .version('v1.0')
+                            .select(['id', 'displayName'].join(','))
+                            .get()];
+                    case 1:
+                        response = _a.sent();
+                        members = (response === null || response === void 0 ? void 0 : response.value) || [];
+                        return [2 /*return*/, members.map(function (member) { return ({
+                                webUrl: webUrl,
+                                principalType: Permissions_1.PrincipalType.SecurityGroup,
+                                loginName: "c:0t.c|tenant|".concat(member.id),
+                                displayName: member.displayName
+                            }); })];
+                }
+            });
+        });
+    };
+    /**
+     * Directory roles are usually assigned to users, but Entra RBAC also allows assigning a role to a
+     * group (its members then inherit the role) - so, mirroring fetchEntraGroupNestedGroups, this
+     * asks Graph for the group-typed members of an already-activated role, given its own object id.
+     */
+    PermissionsManager.prototype.fetchDirectoryRoleNestedGroups = function (client, webUrl, roleId) {
+        return tslib_1.__awaiter(this, void 0, void 0, function () {
+            var response, members;
+            return tslib_1.__generator(this, function (_a) {
+                switch (_a.label) {
+                    case 0: return [4 /*yield*/, client
+                            .api("/directoryRoles/".concat(encodeURIComponent(roleId), "/members/microsoft.graph.group"))
+                            .version('v1.0')
+                            .select(['id', 'displayName'].join(','))
+                            .get()];
+                    case 1:
                         response = _a.sent();
                         members = (response === null || response === void 0 ? void 0 : response.value) || [];
                         return [2 /*return*/, members.map(function (member) { return ({
@@ -584,7 +794,7 @@ var PermissionsManager = /** @class */ (function () {
     };
     PermissionsManager.prototype.resolveLoginName = function (webUrl, loginHint) {
         return tslib_1.__awaiter(this, void 0, void 0, function () {
-            var options, response, data, error_10;
+            var options, response, data, error_13;
             var _a;
             return tslib_1.__generator(this, function (_b) {
                 switch (_b.label) {
@@ -610,8 +820,8 @@ var PermissionsManager = /** @class */ (function () {
                         data = _b.sent();
                         return [2 /*return*/, (_a = this.unwrapEntity(data)) === null || _a === void 0 ? void 0 : _a.LoginName];
                     case 4:
-                        error_10 = _b.sent();
-                        throw new Error("User could not be resolved on this web (".concat(loginHint, "): ").concat(error_10));
+                        error_13 = _b.sent();
+                        throw new Error("User could not be resolved on this web (".concat(loginHint, "): ").concat(error_13));
                     case 5: return [2 /*return*/];
                 }
             });

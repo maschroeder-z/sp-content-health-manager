@@ -49,6 +49,12 @@
         "id": "ac57c893-8be0-4d4e-9b78-7367235289b2",
         "version": "1.0.0.0"
       }
+    ],
+    "webApiPermissionRequests": [
+      {
+        "resource": "Microsoft Graph",
+        "scope": "RoleManagement.Read.Directory"
+      }
     ]
   },
   "paths": {

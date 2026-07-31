@@ -127,7 +127,12 @@ define([], function () {
     "NotCheckedOut": "Nicht ausgecheckt",
     "CheckoutNotSupported": "Nicht unterstützt",
     "LibraryTypeLabel": "Dokumentbibliothek",
-    "ListTypeLabel": "Liste"
+    "ListTypeLabel": "Liste",
+    "DirectoryRolePickerLabel": "Integrierte Entra-ID-Rolle",
+    "DirectoryRolePickerHint": "Zeigt an, wer eine integrierte Entra-ID-Administratorrolle innehat, z. B. Globaler Administrator. Erfordert die Genehmigung der Berechtigungsanfrage RoleManagement.Read.Directory durch den Mandantenadministrator.",
+    "SelectDirectoryRolePlaceholder": "Rolle auswählen...",
+    "PermissionsDialogPermissionsTab": "Berechtigungen",
+    "PermissionsDialogEntraRolesTab": "Integrierte Entra-ID-Rollen"
   }
 });
 
