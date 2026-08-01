@@ -14,9 +14,9 @@ import { IContentHealthManagerProps } from './components/IContentHealthManagerPr
 import { FluentProvider, FluentProviderProps, IdPrefixProvider, teamsLightTheme, teamsDarkTheme } from '@fluentui/react-components';
 import { WebPartTitle } from '@pnp/spfx-controls-react/lib/WebPartTitle';
 import './WebPartTitleOverrides.global.scss';
+import PropertyPaneLogo from './PropertyPaneLogo';
 
 export interface IContentHealthManagerWebPartProps {
-  description: string;
   title: string;
 }
 
@@ -32,17 +32,16 @@ export default class ContentHealthManagerWebPart extends BaseClientSideWebPart<I
 
   public render(): void {
     const element: React.ReactElement<IContentHealthManagerProps> = React.createElement(
-    ContentHealthManager,
-    {
-      description: this.properties.description,
-      isDarkTheme: this._isDarkTheme,
-      environmentMessage: this._environmentMessage,
-      hasTeamsContext: !!this.context.sdks.microsoftTeams,
-      userDisplayName: this.context.pageContext.user.displayName,
-      msGraphClientFactory: this.context.msGraphClientFactory as any,
-      wpContext: this.context,
-      spHTTPClient: this.context.spHttpClient as any      
-    });
+      ContentHealthManager,
+      {
+        isDarkTheme: this._isDarkTheme,
+        environmentMessage: this._environmentMessage,
+        hasTeamsContext: !!this.context.sdks.microsoftTeams,
+        userDisplayName: this.context.pageContext.user.displayName,
+        msGraphClientFactory: this.context.msGraphClientFactory as any,
+        wpContext: this.context,
+        spHTTPClient: this.context.spHttpClient as any
+      });
 
 
     const titleElement: React.ReactElement = React.createElement(WebPartTitle, {
@@ -62,7 +61,7 @@ export default class ContentHealthManagerWebPart extends BaseClientSideWebPart<I
       element
     );
 
-    const temp: React.ReactElement = React.createElement(IdPrefixProvider,{value:"msz"},fluentElement);
+    const temp: React.ReactElement = React.createElement(IdPrefixProvider, { value: "msz" }, fluentElement);
 
     ReactDom.render(temp, this.domElement);
   }
@@ -146,11 +145,9 @@ export default class ContentHealthManagerWebPart extends BaseClientSideWebPart<I
           },
           groups: [
             {
-              groupName: strings.BasicGroupName,
+              groupName: "",
               groupFields: [
-                PropertyPaneTextField('description', {
-                  label: strings.DescriptionFieldLabel
-                })
+                new PropertyPaneLogo()
               ]
             }
           ]

@@ -145,6 +145,7 @@ declare interface IContentHealthManagerWebPartStrings {
   DirectoryRoleNotInUseMessage: string;
   PermissionsDialogPermissionsTab: string;
   PermissionsDialogEntraRolesTab: string;
+  LblPoweredBy: string;
 }
 
 declare module 'ContentHealthManagerWebPartStrings' {

@@ -269,7 +269,10 @@ export class GraphDataManager {
     }
   }
 
-  public async GetPermission4Item(site: Site, listID: string, listItemID: string): Promise<MicrosoftGraphBeta.Permission[]> {
+  /* NOTE: The following method is commented out because it uses the Microsoft Graph API to get permissions for a list item, 
+           but the Graph API may not support this operation for all scenarios. If you need to retrieve permissions, consider 
+           using SharePoint REST API or other methods.
+    public async GetPermission4Item(site: Site, listID: string, listItemID: string): Promise<MicrosoftGraphBeta.Permission[]> {
     try {
       const client = await this.graphClientPromise;
       // Query for permission information using Microsoft Graph API
@@ -283,7 +286,7 @@ export class GraphDataManager {
       console.error('Error retrieving item permissions:', error);
       throw error;
     }
-  }
+  }*/
 
   /**
  * Queries list items by date using SharePoint REST API

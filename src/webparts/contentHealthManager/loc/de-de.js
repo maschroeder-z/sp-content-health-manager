@@ -1,6 +1,6 @@
 define([], function () {
   return {
-    "PropertyPaneDescription": "Beschreibung",
+    "PropertyPaneDescription": "Informationen",
     "BasicGroupName": "Gruppenname",
     "DescriptionFieldLabel": "Beschreibungsfeld",
     "AppLocalEnvironmentSharePoint": "Die App läuft in Ihrer lokalen Umgebung als SharePoint-Webpart",
@@ -133,7 +133,8 @@ define([], function () {
     "SelectDirectoryRolePlaceholder": "Rolle auswählen...",
     "DirectoryRoleNotInUseMessage": "Niemand in diesem Mandanten hat derzeit die Rolle {0} inne.",
     "PermissionsDialogPermissionsTab": "Berechtigungen",
-    "PermissionsDialogEntraRolesTab": "Integrierte Entra-ID-Rollen"
+    "PermissionsDialogEntraRolesTab": "Integrierte Entra-ID-Rollen",
+    "LblPoweredBy": "Unterstützt von"
   }
 });
 

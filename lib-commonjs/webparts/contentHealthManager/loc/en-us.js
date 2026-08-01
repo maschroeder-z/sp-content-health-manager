@@ -1,6 +1,6 @@
-define([], function() {
+define([], function () {
   return {
-    "PropertyPaneDescription": "Description",
+    "PropertyPaneDescription": "Information",
     "BasicGroupName": "Group Name",
     "DescriptionFieldLabel": "Description Field",
     "AppLocalEnvironmentSharePoint": "The app is running on your local environment as SharePoint web part",
@@ -133,6 +133,7 @@ define([], function() {
     "SelectDirectoryRolePlaceholder": "Select a role...",
     "DirectoryRoleNotInUseMessage": "No one in this tenant is currently assigned the {0} role.",
     "PermissionsDialogPermissionsTab": "Permissions",
-    "PermissionsDialogEntraRolesTab": "Built-in Entra ID Roles"
+    "PermissionsDialogEntraRolesTab": "Built-in Entra ID Roles",
+    "LblPoweredBy": "Powered by"
   }
 });

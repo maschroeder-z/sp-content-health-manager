@@ -5,13 +5,13 @@ var tslib_1 = require("tslib");
 var React = tslib_1.__importStar(require("react"));
 var ReactDom = tslib_1.__importStar(require("react-dom"));
 var sp_core_library_1 = require("@microsoft/sp-core-library");
-var sp_property_pane_1 = require("@microsoft/sp-property-pane");
 var sp_webpart_base_1 = require("@microsoft/sp-webpart-base");
 var strings = tslib_1.__importStar(require("ContentHealthManagerWebPartStrings"));
 var ContentHealthManager_1 = tslib_1.__importDefault(require("./components/ContentHealthManager"));
 var react_components_1 = require("@fluentui/react-components");
 var WebPartTitle_1 = require("@pnp/spfx-controls-react/lib/WebPartTitle");
 require("./WebPartTitleOverrides.global.scss");
+var PropertyPaneLogo_1 = tslib_1.__importDefault(require("./PropertyPaneLogo"));
 var AppMode;
 (function (AppMode) {
     AppMode[AppMode["SharePoint"] = 0] = "SharePoint";
@@ -36,7 +36,6 @@ var ContentHealthManagerWebPart = /** @class */ (function (_super) {
     ContentHealthManagerWebPart.prototype.render = function () {
         var _this = this;
         var element = React.createElement(ContentHealthManager_1.default, {
-            description: this.properties.description,
             isDarkTheme: this._isDarkTheme,
             environmentMessage: this._environmentMessage,
             hasTeamsContext: !!this.context.sdks.microsoftTeams,
@@ -128,11 +127,9 @@ var ContentHealthManagerWebPart = /** @class */ (function (_super) {
                     },
                     groups: [
                         {
-                            groupName: strings.BasicGroupName,
+                            groupName: "",
                             groupFields: [
-                                (0, sp_property_pane_1.PropertyPaneTextField)('description', {
-                                    label: strings.DescriptionFieldLabel
-                                })
+                                new PropertyPaneLogo_1.default()
                             ]
                         }
                     ]

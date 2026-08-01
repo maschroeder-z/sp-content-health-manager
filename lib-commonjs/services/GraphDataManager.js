@@ -290,40 +290,31 @@ var GraphDataManager = /** @class */ (function () {
             });
         });
     };
-    GraphDataManager.prototype.GetPermission4Item = function (site, listID, listItemID) {
-        return tslib_1.__awaiter(this, void 0, void 0, function () {
-            var client, response, error_4;
-            return tslib_1.__generator(this, function (_a) {
-                switch (_a.label) {
-                    case 0:
-                        _a.trys.push([0, 3, , 4]);
-                        return [4 /*yield*/, this.graphClientPromise];
-                    case 1:
-                        client = _a.sent();
-                        return [4 /*yield*/, client
-                                .api("/sites/".concat(encodeURIComponent(site.id), "/lists/").concat(listID, "/items/").concat(listItemID, "/permissions"))
-                                .version('beta')
-                                .get()];
-                    case 2:
-                        response = _a.sent();
-                        console.log(response === null || response === void 0 ? void 0 : response.value);
-                        return [2 /*return*/, (response === null || response === void 0 ? void 0 : response.value) || []];
-                    case 3:
-                        error_4 = _a.sent();
-                        console.error('Error retrieving item permissions:', error_4);
-                        throw error_4;
-                    case 4: return [2 /*return*/];
-                }
-            });
-        });
-    };
+    /* NOTE: The following method is commented out because it uses the Microsoft Graph API to get permissions for a list item,
+             but the Graph API may not support this operation for all scenarios. If you need to retrieve permissions, consider
+             using SharePoint REST API or other methods.
+      public async GetPermission4Item(site: Site, listID: string, listItemID: string): Promise<MicrosoftGraphBeta.Permission[]> {
+      try {
+        const client = await this.graphClientPromise;
+        // Query for permission information using Microsoft Graph API
+        const response = await client
+          .api(`/sites/${encodeURIComponent(site.id)}/lists/${listID}/items/${listItemID}/permissions`)
+          .version('beta')
+          .get();
+        console.log(response?.value);
+        return response?.value || [];
+      } catch (error) {
+        console.error('Error retrieving item permissions:', error);
+        throw error;
+      }
+    }*/
     /**
    * Queries list items by date using SharePoint REST API
    * Endpoint: /[siteUrl]/_api/web/lists('[listID]')/GetItems(query=@v1)?@v1={'ViewXml':'<View><Query><Where><Leq><FieldRef Name=Modified/><Value Type=DateTime>[dateStart]</Value></Leq></Where></Query></View>'}&$expand=file
    */
     GraphDataManager.prototype.Query4ItemByDateClassic = function (siteUrl, listID, defaultUrl, dateStart) {
         return tslib_1.__awaiter(this, void 0, void 0, function () {
-            var formattedDate, viewXml, options, apiUrl, response, data, items, error_5;
+            var formattedDate, viewXml, options, apiUrl, response, data, items, error_4;
             var _a;
             return tslib_1.__generator(this, function (_b) {
                 switch (_b.label) {
@@ -369,9 +360,9 @@ var GraphDataManager = /** @class */ (function () {
                         });
                         return [2 /*return*/, items];
                     case 4:
-                        error_5 = _b.sent();
-                        console.error('Error querying items by date:', error_5);
-                        throw error_5;
+                        error_4 = _b.sent();
+                        console.error('Error querying items by date:', error_4);
+                        throw error_4;
                     case 5: return [2 /*return*/, []];
                 }
             });
