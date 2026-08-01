@@ -429,8 +429,9 @@ var PermissionsManager = /** @class */ (function () {
      * universal role template id (see models/REST/Permissions.ts SHAREPOINT_RELEVANT_ENTRA_ROLES).
      * Unlike security groups, directory roles are addressed via /directoryRoles, not /groups - a role
      * that has never been assigned to anyone in this tenant may not be "activated" yet and this call
-     * will 404 for it (activating one requires the write-scoped RoleManagement.ReadWrite.Directory
-     * permission, out of scope for a read-only permissions audit tool). Requires the
+     * 404s for it (activating one requires the write-scoped RoleManagement.ReadWrite.Directory
+     * permission, out of scope for a read-only permissions audit tool). That 404 is treated as "nobody
+     * holds this role" rather than an error and resolves to an empty list. Requires the
      * RoleManagement.Read.Directory Graph permission, requested in config/package-solution.json and
      * subject to tenant admin approval - until approved this throws a 403 GraphError.
      */
@@ -455,6 +456,9 @@ var PermissionsManager = /** @class */ (function () {
                     case 3: return [2 /*return*/, _a.sent()];
                     case 4:
                         error_10 = _a.sent();
+                        if ((error_10 === null || error_10 === void 0 ? void 0 : error_10.statusCode) === 404) {
+                            return [2 /*return*/, []];
+                        }
                         console.error('Error resolving directory role members:', error_10);
                         throw error_10;
                     case 5: return [2 /*return*/];

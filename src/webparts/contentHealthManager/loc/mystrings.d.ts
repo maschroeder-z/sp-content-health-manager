@@ -142,6 +142,7 @@ declare interface IContentHealthManagerWebPartStrings {
   DirectoryRolePickerLabel: string;
   DirectoryRolePickerHint: string;
   SelectDirectoryRolePlaceholder: string;
+  DirectoryRoleNotInUseMessage: string;
   PermissionsDialogPermissionsTab: string;
   PermissionsDialogEntraRolesTab: string;
 }

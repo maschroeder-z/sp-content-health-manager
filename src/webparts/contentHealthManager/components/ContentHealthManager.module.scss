@@ -154,8 +154,6 @@ https://learn.microsoft.com/en-us/sharepoint/dev/spfx/office-ui-fabric-integrati
   align-items: flex-start;
   gap: 8px;
   margin-top: 10px;
-  margin-left: 20px;
-  margin-bottom: 12px;
   padding: 10px 12px;
   background-color: "[theme:neutralLighter, default: #f3f2f1]";
   background-color: var(--neutralLighter);
@@ -163,7 +161,7 @@ https://learn.microsoft.com/en-us/sharepoint/dev/spfx/office-ui-fabric-integrati
   border: 1px solid "[theme:neutralLight, default: #edebe9]";
   border-color: var(--neutralLight);
   font-size: 13px;
-  line-height: 1.4;
+  line-height: 1.8;
 }
 
 .noteBoxIcon {

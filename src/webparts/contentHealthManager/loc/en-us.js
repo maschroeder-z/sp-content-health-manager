@@ -131,6 +131,7 @@ define([], function() {
     "DirectoryRolePickerLabel": "Built-in Entra ID role",
     "DirectoryRolePickerHint": "Look up who holds a built-in Entra ID admin role, such as Global Administrator. Requires tenant admin approval of the RoleManagement.Read.Directory permission request.",
     "SelectDirectoryRolePlaceholder": "Select a role...",
+    "DirectoryRoleNotInUseMessage": "No one in this tenant is currently assigned the {0} role.",
     "PermissionsDialogPermissionsTab": "Permissions",
     "PermissionsDialogEntraRolesTab": "Built-in Entra ID Roles"
   }

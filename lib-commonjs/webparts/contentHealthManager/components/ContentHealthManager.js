@@ -398,7 +398,7 @@ var ContentHealthManager = /** @class */ (function (_super) {
     /**https://storybooks.fluentui.dev/react/?path=/docs/components-tablist--docs*/
     ContentHealthManager.prototype.render = function () {
         var _this = this;
-        var _a;
+        var _a, _b;
         return (React.createElement("section", { className: ContentHealthManager_module_scss_1.default.contentHealthManager },
             this.state.SelectedSites.length === 0 && (React.createElement("div", { className: ContentHealthManager_module_scss_1.default.summarySection },
                 React.createElement("div", { className: ContentHealthManager_module_scss_1.default.summaryDescription },
@@ -772,7 +772,9 @@ var ContentHealthManager = /** @class */ (function (_super) {
                                         React.createElement(react_components_1.Dropdown, { placeholder: strings.SelectDirectoryRolePlaceholder, value: ((_a = Permissions_1.SHAREPOINT_RELEVANT_ENTRA_ROLES.find(function (r) { return r.roleTemplateId === _this.state.selectedDirectoryRoleId; })) === null || _a === void 0 ? void 0 : _a.displayName) || '', selectedOptions: this.state.selectedDirectoryRoleId ? [this.state.selectedDirectoryRoleId] : [], onOptionSelect: function (_, data) { return data.optionValue && _this.selectDirectoryRole(data.optionValue); } }, Permissions_1.SHAREPOINT_RELEVANT_ENTRA_ROLES.map(function (role) { return (React.createElement(react_components_1.Option, { key: role.roleTemplateId, value: role.roleTemplateId }, role.displayName)); }))),
                                     this.state.isLoadingDirectoryRoleMembers && React.createElement(react_components_1.Spinner, { size: "tiny", className: ContentHealthManager_module_scss_1.default.progressSpinner }),
                                     this.state.directoryRoleMembersError && (React.createElement("div", { style: { color: '#d32f2f', marginTop: 8 } }, this.state.directoryRoleMembersError)),
-                                    !this.state.isLoadingDirectoryRoleMembers && !this.state.directoryRoleMembersError && this.state.selectedDirectoryRoleId && (React.createElement(ListView_1.ListView, { items: this.state.directoryRoleMembers, viewFields: this.viewFieldsGroupMembers, compact: true, selectionMode: react_1.SelectionMode.none })))))),
+                                    !this.state.isLoadingDirectoryRoleMembers && !this.state.directoryRoleMembersError && this.state.selectedDirectoryRoleId && (this.state.directoryRoleMembers.length === 0 ? (React.createElement("div", { className: ContentHealthManager_module_scss_1.default.noteBox },
+                                        React.createElement(react_icons_1.Info24Regular, { className: ContentHealthManager_module_scss_1.default.noteBoxIcon }),
+                                        React.createElement("span", null, strings.DirectoryRoleNotInUseMessage.replace('{0}', ((_b = Permissions_1.SHAREPOINT_RELEVANT_ENTRA_ROLES.find(function (r) { return r.roleTemplateId === _this.state.selectedDirectoryRoleId; })) === null || _b === void 0 ? void 0 : _b.displayName) || '')))) : (React.createElement(ListView_1.ListView, { items: this.state.directoryRoleMembers, viewFields: this.viewFieldsGroupMembers, compact: true, selectionMode: react_1.SelectionMode.none }))))))),
                         React.createElement(react_components_1.DialogActions, null,
                             React.createElement(react_components_1.Tooltip, { content: strings.TooltipCloseDialog, relationship: "label" },
                                 React.createElement(react_components_1.Button, { icon: React.createElement(react_icons_1.Dismiss24Regular, null), appearance: 'secondary', onClick: function () { return _this.setState({ isPagePermissionsOpen: false }); } }, strings.CloseButton))))))));

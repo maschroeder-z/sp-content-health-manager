@@ -131,6 +131,7 @@ define([], function () {
     "DirectoryRolePickerLabel": "Integrierte Entra-ID-Rolle",
     "DirectoryRolePickerHint": "Zeigt an, wer eine integrierte Entra-ID-Administratorrolle innehat, z. B. Globaler Administrator. Erfordert die Genehmigung der Berechtigungsanfrage RoleManagement.Read.Directory durch den Mandantenadministrator.",
     "SelectDirectoryRolePlaceholder": "Rolle auswählen...",
+    "DirectoryRoleNotInUseMessage": "Niemand in diesem Mandanten hat derzeit die Rolle {0} inne.",
     "PermissionsDialogPermissionsTab": "Berechtigungen",
     "PermissionsDialogEntraRolesTab": "Integrierte Entra-ID-Rollen"
   }

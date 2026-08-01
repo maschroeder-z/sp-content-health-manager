@@ -1006,11 +1006,23 @@ export default class ContentHealthManager extends React.Component<IContentHealth
                         <div style={{ color: '#d32f2f', marginTop: 8 }}>{this.state.directoryRoleMembersError}</div>
                       )}
                       {!this.state.isLoadingDirectoryRoleMembers && !this.state.directoryRoleMembersError && this.state.selectedDirectoryRoleId && (
-                        <ListView
-                          items={this.state.directoryRoleMembers}
-                          viewFields={this.viewFieldsGroupMembers}
-                          compact={true}
-                          selectionMode={SelectionMode.none} />
+                        this.state.directoryRoleMembers.length === 0 ? (
+                          <div className={styles.noteBox}>
+                            <Info24Regular className={styles.noteBoxIcon} />
+                            <span>
+                              {strings.DirectoryRoleNotInUseMessage.replace(
+                                '{0}',
+                                SHAREPOINT_RELEVANT_ENTRA_ROLES.find((r: DirectoryRoleOption) => r.roleTemplateId === this.state.selectedDirectoryRoleId)?.displayName || ''
+                              )}
+                            </span>
+                          </div>
+                        ) : (
+                          <ListView
+                            items={this.state.directoryRoleMembers}
+                            viewFields={this.viewFieldsGroupMembers}
+                            compact={true}
+                            selectionMode={SelectionMode.none} />
+                        )
                       )}
                     </div>
                   )}
