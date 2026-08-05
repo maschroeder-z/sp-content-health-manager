@@ -1,0 +1,9 @@
+The initial app start screen contains useful information about how you can use the features of the app. This information is very handy for any new user.
+
+The app allows the centralized analysis of multiple site collections. At first you must select all desired site collections. To evaluate a specific site collection, select one of the previously chosen sites from the dropdown list.
+
+After a site is selected, the first tab register shows an overview of the site pages. Further information—like who has checked out a page, which page has unique permissions, or which pages need to be approved-can be queried.
+
+Besides this overview, a special function evaluates the page content and reports broken links. Open the detail dialog to view the report on broken links.
+
+The permission dialog shows all relevant details to verify the permissions for a specific element or for the library itself. It is possible to see which users and groups have access to an item. All groups will be resolved, allowing for the completion of all assignments related to users. Furthermore, it is possible to query the permissions for a given user or group.

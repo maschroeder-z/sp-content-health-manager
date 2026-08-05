@@ -93,12 +93,12 @@ var ContentHealthManager = /** @class */ (function (_super) {
             },
             { name: 'ItemCount', displayName: 'Items', sorting: true, isResizable: true, minWidth: 120 },
             {
-                name: 'FoundItems', displayName: strings.FoundLabel, sorting: true, isResizable: true, minWidth: 120,
+                name: 'FoundItems', displayName: strings.FoundLabelByDate, sorting: true, isResizable: true, minWidth: 120,
                 render: function (item, index, column) {
                     var _a;
                     var entry = _this.GetLibraryEntryByIndex(item.Id);
                     if (typeof entry.FoundItems !== "undefined" && entry.FoundItems !== null) {
-                        return React.createElement(spfx_controls_react_1.FieldTextRenderer, { text: "".concat(strings.FoundLabel, ": ").concat((_a = entry.FoundItems) === null || _a === void 0 ? void 0 : _a.length) });
+                        return React.createElement(spfx_controls_react_1.FieldTextRenderer, { text: "".concat(strings.FoundLabelByDate, ": ").concat((_a = entry.FoundItems) === null || _a === void 0 ? void 0 : _a.length) });
                     }
                     else
                         return React.createElement(spfx_controls_react_1.FieldTextRenderer, { text: strings.StartQueryForResults });
@@ -134,7 +134,7 @@ var ContentHealthManager = /** @class */ (function (_super) {
             },
             { name: 'ItemCount', displayName: 'Items', sorting: true, isResizable: true, minWidth: 120 },
             {
-                name: 'FoundItems', displayName: strings.FoundLabel, sorting: true, isResizable: true, minWidth: 120,
+                name: 'FoundItems', displayName: strings.FoundLabelCheckedOut, sorting: true, isResizable: true, minWidth: 120,
                 render: function (item, index, column) {
                     var _a;
                     var entry = _this.GetLibraryEntryByIndex(item.Id);
@@ -142,7 +142,7 @@ var ContentHealthManager = /** @class */ (function (_super) {
                         return React.createElement(spfx_controls_react_1.FieldTextRenderer, { text: strings.CheckoutNotSupported });
                     }
                     else if (typeof entry.FoundCheckedOutItems !== "undefined" && entry.FoundCheckedOutItems !== null) {
-                        return React.createElement(spfx_controls_react_1.FieldTextRenderer, { text: "".concat(strings.FoundLabel, ": ").concat((_a = entry.FoundCheckedOutItems) === null || _a === void 0 ? void 0 : _a.length) });
+                        return React.createElement(spfx_controls_react_1.FieldTextRenderer, { text: "".concat(strings.FoundLabelCheckedOut, ": ").concat((_a = entry.FoundCheckedOutItems) === null || _a === void 0 ? void 0 : _a.length) });
                     }
                     else
                         return React.createElement(spfx_controls_react_1.FieldTextRenderer, { text: strings.StartQueryForResults });
@@ -154,7 +154,7 @@ var ContentHealthManager = /** @class */ (function (_super) {
             { name: 'title', displayName: 'Title', sorting: true, isResizable: true, minWidth: 50, linkPropertyName: 'webUrl' },
             { name: 'name', displayName: 'Name', sorting: true, isResizable: true, minWidth: 200 },
             {
-                name: 'Links', displayName: 'Links', sorting: false, isResizable: true,
+                name: 'Links', displayName: strings.FoundLabelBrokenLinks, sorting: false, isResizable: true,
                 render: function (item, index, column) {
                     var entry = _this.state.pageResults.filter(function (x) { return x.pageID === item.id; })[0];
                     if (typeof entry === "undefined" || typeof entry.Links === "undefined") {

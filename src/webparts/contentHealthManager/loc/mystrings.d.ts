@@ -122,6 +122,9 @@ declare interface IContentHealthManagerWebPartStrings {
   NoAccessLevelLabel: string;
   // View Fields
   FoundLabel: string;
+  FoundLabelByDate: string;
+  FoundLabelBrokenLinks: string;
+  FoundLabelCheckedOut: string;
   StartQueryForResults: string;
   CreatedAtLabel: string;
   LastChangeLabel: string;

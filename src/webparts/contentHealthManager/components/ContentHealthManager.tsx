@@ -181,11 +181,11 @@ export default class ContentHealthManager extends React.Component<IContentHealth
     },
     { name: 'ItemCount', displayName: 'Items', sorting: true, isResizable: true, minWidth: 120 },
     {
-      name: 'FoundItems', displayName: strings.FoundLabel, sorting: true, isResizable: true, minWidth: 120,
+      name: 'FoundItems', displayName: strings.FoundLabelByDate, sorting: true, isResizable: true, minWidth: 120,
       render: (item: ListInformation, index, column) => {
         const entry = this.GetLibraryEntryByIndex(item.Id);
         if (typeof entry.FoundItems !== "undefined" && entry.FoundItems !== null) {
-          return <FieldTextRenderer text={`${strings.FoundLabel}: ${entry.FoundItems?.length}`} />;
+          return <FieldTextRenderer text={`${strings.FoundLabelByDate}: ${entry.FoundItems?.length}`} />;
         }
         else
           return <FieldTextRenderer text={strings.StartQueryForResults} />;
@@ -221,14 +221,14 @@ export default class ContentHealthManager extends React.Component<IContentHealth
     },
     { name: 'ItemCount', displayName: 'Items', sorting: true, isResizable: true, minWidth: 120 },
     {
-      name: 'FoundItems', displayName: strings.FoundLabel, sorting: true, isResizable: true, minWidth: 120,
+      name: 'FoundItems', displayName: strings.FoundLabelCheckedOut, sorting: true, isResizable: true, minWidth: 120,
       render: (item: ListInformation, index, column) => {
         const entry = this.GetLibraryEntryByIndex(item.Id);
         if (entry.FoundItemsUnsupported) {
           return <FieldTextRenderer text={strings.CheckoutNotSupported} />;
         }
         else if (typeof entry.FoundCheckedOutItems !== "undefined" && entry.FoundCheckedOutItems !== null) {
-          return <FieldTextRenderer text={`${strings.FoundLabel}: ${entry.FoundCheckedOutItems?.length}`} />;
+          return <FieldTextRenderer text={`${strings.FoundLabelCheckedOut}: ${entry.FoundCheckedOutItems?.length}`} />;
         }
         else
           return <FieldTextRenderer text={strings.StartQueryForResults} />;
@@ -241,7 +241,7 @@ export default class ContentHealthManager extends React.Component<IContentHealth
     { name: 'title', displayName: 'Title', sorting: true, isResizable: true, minWidth: 50, linkPropertyName: 'webUrl' },
     { name: 'name', displayName: 'Name', sorting: true, isResizable: true, minWidth: 200 },
     {
-      name: 'Links', displayName: 'Links', sorting: false, isResizable: true,
+      name: 'Links', displayName: strings.FoundLabelBrokenLinks, sorting: false, isResizable: true,
       render: (item, index, column) => {
         const entry = this.state.pageResults.filter(x => x.pageID === item.id)[0];
 
